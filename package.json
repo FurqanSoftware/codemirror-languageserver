@@ -1,0 +1,19 @@
+{
+  "name": "codemirror-languageserver",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "make",
+    "test": "make test"
+  },
+  "author": "Mahmud Ridwan <m@hjr265.me>",
+  "license": "FreeBSD",
+  "devDependencies": {
+    "coffeescript": "^2.5.1",
+    "mocha": "^8.1.1"
+  },
+  "dependencies": {
+    "@open-rpc/client-js": "^1.6.2"
+  }
+}
