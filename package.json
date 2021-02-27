@@ -10,6 +10,8 @@
   "author": "Mahmud Ridwan <m@hjr265.me>",
   "license": "BSD-3-Clause",
   "devDependencies": {
+    "@babel/core": "^7.13.8",
+    "@babel/preset-env": "^7.13.8",
     "coffeescript": "^2.5.1",
     "mocha": "^8.1.1"
   },
