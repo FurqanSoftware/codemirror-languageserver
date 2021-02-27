@@ -8,7 +8,7 @@
     "test": "make test"
   },
   "author": "Mahmud Ridwan <m@hjr265.me>",
-  "license": "FreeBSD",
+  "license": "BSD-3-Clause",
   "devDependencies": {
     "coffeescript": "^2.5.1",
     "mocha": "^8.1.1"
