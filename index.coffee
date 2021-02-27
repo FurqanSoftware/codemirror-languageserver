@@ -4,7 +4,6 @@ import { EditorView, ViewPlugin, themeClass } from "@codemirror/view"
 import { linter } from '@codemirror/lint'
 import { showTooltip, hoverTooltip } from '@codemirror/tooltip'
 import { autocompletion } from '@codemirror/autocomplete'
-import { Deferred } from 'promise.coffee'
 
 serverUri = Facet.define
 	combine: (values) => values.reduce ((_, v) => v), ''
@@ -24,10 +23,11 @@ class LanguageServerPlugin
 		@documentUri = @view.state.facet documentUri
 		@languageId = @view.state.facet languageId
 		@documentVersion = 0
+		@promises = []
 		@transport = new WebSocketTransport @view.state.facet serverUri
 		@requestManager = new RequestManager [@transport]
 		@client = new Client @requestManager
-		@client.onNotification => @processNotification arguments...
+		@client.onNotification (data) => @processNotification data
 		@initialize
 			documentText: @view.state.doc.toString()
 
@@ -103,6 +103,7 @@ class LanguageServerPlugin
 				@sendOnReady = no
 				@sendChange
 					documentText: documentText
+		return
 
 	sendChange: ({documentText}) ->
 		if not @ready
@@ -120,15 +121,17 @@ class LanguageServerPlugin
 					]
 		catch e
 			console.error e
+		return
 
 	requestDiagnostics: (view) ->
-		@diagnosticsVersion = @documentVersion
 		@sendChange
 			documentText: view.state.doc.toString()
-		deffered = new Deferred
-		@diagnosticsDeferred?.resolve []
-		@diagnosticsDeferred = deffered
-		return deffered.promise
+		return new Promise (fulfill, reject) =>
+			@promises.push
+				type: 'diagnostics'
+				fulfill: -> fulfill arguments...
+				reject: -> reject arguments...
+			return
 
 	requestHoverTooltip: (view, {line, character}) ->
 		if not @ready or not @capabilities.hoverProvider
@@ -264,8 +267,8 @@ class LanguageServerPlugin
 			console.error e
 
 	processDiagnostics: ({params}) ->
-		if @documentVersion > @diagnosticsVersion + 1
-			return
+		# if @documentVersion isnt @params.version
+		# 	return
 		annotations = params.diagnostics.map ({range, message, severity}) =>
 			'from': posToOffset(@view.state.doc, range.start)
 			to: posToOffset(@view.state.doc, range.end)
@@ -283,8 +286,13 @@ class LanguageServerPlugin
 				when a.from > b.from
 					1
 				else
-					0 
-		@diagnosticsDeferred?.resolve annotations
+					0
+		@promises = for p in @promises
+			if p.type is 'diagnostics'
+				p.fulfill annotations
+				continue
+			p
+		return
 
 	clearTooltip: ->
 		@view.dispatch
