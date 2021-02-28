@@ -1,5 +1,6 @@
+src/*
 .git*
-*.coffee
-Makefile
+.babelrc.json
+rollup.config.js
 
 *.sublime-*
