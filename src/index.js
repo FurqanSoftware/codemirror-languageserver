@@ -5,6 +5,8 @@ import { showTooltip, hoverTooltip } from '@codemirror/tooltip';
 import { EditorView, ViewPlugin } from "@codemirror/view";
 import { RequestManager, Client, WebSocketTransport } from '@open-rpc/client-js';
 
+const timeout = 10000;
+
 const serverUri = Facet.define({
 	combine: (values) => values.reduce((_, v) => v, '')
 });
@@ -112,7 +114,7 @@ class LanguageServerPlugin {
 					}
 				]
 			}
-		}).then(({capabilities, serverInfo}) => {
+		}, timeout * 3).then(({capabilities, serverInfo}) => {
 			this.capabilities = capabilities;
 			this.client.notify({
 				method: 'initialized',
@@ -192,7 +194,7 @@ class LanguageServerPlugin {
 					character: character
 				}
 			}
-		}).then((result) => {
+		}, timeout).then((result) => {
 			if (!result) {
 				this.view.dispatch({
 					reconfigure: {
@@ -254,7 +256,7 @@ class LanguageServerPlugin {
 					triggerCharacter: triggerCharacter
 				}
 			}
-		}).then((result) => {
+		}, timeout).then((result) => {
 			if (!result) {
 				return null;
 			}
