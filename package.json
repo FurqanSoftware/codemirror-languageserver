@@ -15,12 +15,11 @@
     "rollup": "^2.40.0"
   },
   "dependencies": {
-    "@codemirror/autocomplete": "^0.17.4",
-    "@codemirror/lint": "^0.17.1",
-    "@codemirror/state": "^0.17.2",
-    "@codemirror/tooltip": "^0.17.2",
-    "@codemirror/view": "^0.17.9",
-    "@open-rpc/client-js": "^1.6.2",
-    "promise": "^8.1.0"
+    "@codemirror/autocomplete": "^0.18.0",
+    "@codemirror/lint": "^0.18.0",
+    "@codemirror/state": "^0.18.0",
+    "@codemirror/tooltip": "^0.18.1",
+    "@codemirror/view": "^0.18.0",
+    "@open-rpc/client-js": "^1.6.2"
   }
 }

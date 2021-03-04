@@ -508,14 +508,14 @@ function prefixMatch(options) {
 };
 
 const baseTheme = EditorView.baseTheme({
-	'$tooltip.documentation': {
+	'.cm-tooltip.documentation': {
 		display: 'block',
 		marginLeft: '0',
 		padding: '3px 6px 3px 8px',
 		borderLeft: '5px solid #999',
 		whiteSpace: 'pre'
 	},
-	'$tooltip.lint': {
+	'.cm-tooltip.lint': {
 		whiteSpace: 'pre'
 	}
 });
