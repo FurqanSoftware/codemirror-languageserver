@@ -183,55 +183,54 @@ class LanguageServerPlugin {
 		this.sendChange({
 			documentText: view.state.doc.toString()
 		});
-		this.client.request({
-			method: 'textDocument/hover',
-			params: {
-				textDocument: {
-					uri: this.documentUri
-				},
-				position: {
+		return new Promise((fulfill, reject) => {
+			this.client.request({
+				method: 'textDocument/hover',
+				params: {
+					textDocument: {
+						uri: this.documentUri
+					},
+					position: {
+						line: line,
+						character: character
+					}
+				}
+			}, timeout).then((result) => {
+				if (!result) {
+					this.view.dispatch({
+						reconfigure: {
+							hoverTooltip: []
+						}
+					});
+					return;
+				}
+				let {contents, range} = result;
+				let pos = posToOffset(view.state.doc, {
 					line: line,
 					character: character
-				}
-			}
-		}, timeout).then((result) => {
-			if (!result) {
-				this.view.dispatch({
-					reconfigure: {
-						hoverTooltip: []
-					}
 				});
-				return;
-			}
-			let {contents, range} = result;
-			let pos = posToOffset(view.state.doc, {
-				line: line,
-				character: character
-			});
-			let end;
-			if (range) {
-				pos = posToOffset(view.state.doc, range.start);
-				end = posToOffset(view.state.doc, range.end);
-			}
-			this.view.dispatch({
-				reconfigure: {
-					hoverTooltip: showTooltip.of({
-						pos: pos,
-						end: end,
-						create: function(view) {
-							let dom = document.createElement('div');
-							dom.textContent = formatContents(contents);
-							return {
-								dom
-							};
-						},
-						style: 'documentation',
-						above: true
-					})
+				let end;
+				if (range) {
+					pos = posToOffset(view.state.doc, range.start);
+					end = posToOffset(view.state.doc, range.end);
 				}
+				fulfill({
+					pos: pos,
+					end: end,
+					create: function(view) {
+						let dom = document.createElement('div');
+						dom.classList.add('documentation');
+						dom.textContent = formatContents(contents);
+						return {
+							dom
+						};
+					},
+					above: true
+				});
+			}).catch(function(reason) {
+				reject(reason);
 			});
 		});
-		return null;
 	}
 
 	requestCompletion(context, {line, character}, {triggerKind, triggerCharacter}) {
@@ -382,14 +381,6 @@ class LanguageServerPlugin {
 		});
 	}
 
-	clearTooltip() {
-		return this.view.dispatch({
-			reconfigure: {
-				hoverTooltip: []
-			}
-		});
-	}
-
 };
 
 export function languageServer(options) {
@@ -402,16 +393,6 @@ export function languageServer(options) {
 		ViewPlugin.define((view) => {
 			plugin = new LanguageServerPlugin(view);
 			return plugin;
-		},
-		{
-			eventHandlers: {
-				keyup: function() {
-					return this.clearTooltip();
-				},
-				click: function() {
-					return this.clearTooltip();
-				}
-			}
 		}),
 		linter((view) => {
 			return plugin != null ? plugin.requestDiagnostics(view) : null;
