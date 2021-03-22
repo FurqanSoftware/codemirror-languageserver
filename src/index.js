@@ -196,14 +196,7 @@ class LanguageServerPlugin {
 					}
 				}
 			}, timeout).then((result) => {
-				if (!result) {
-					this.view.dispatch({
-						reconfigure: {
-							hoverTooltip: []
-						}
-					});
-					return;
-				}
+				if (!result) return;
 				let {contents, range} = result;
 				let pos = posToOffset(view.state.doc, {
 					line: line,
