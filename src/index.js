@@ -207,6 +207,7 @@ class LanguageServerPlugin {
 					pos = posToOffset(view.state.doc, range.start);
 					end = posToOffset(view.state.doc, range.end);
 				}
+				if (pos === null) return fulfill(null);
 				fulfill({
 					pos: pos,
 					end: end,
@@ -373,7 +374,6 @@ class LanguageServerPlugin {
 			}
 		});
 	}
-
 };
 
 export function languageServer(options) {
@@ -426,12 +426,12 @@ export function languageServer(options) {
 };
 
 function posToOffset(doc, pos) {
+	if (pos.line >= doc.lines) return null;
 	return doc.line(pos.line + 1).from + pos.character;
 };
 
 function offsetToPos(doc, offset) {
-	var line;
-	line = doc.lineAt(offset);
+	var line = doc.lineAt(offset);
 	return {
 		line: line.number - 1,
 		character: offset - line.from
