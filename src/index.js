@@ -299,8 +299,9 @@ class LanguageServerPlugin {
 				}[severity],
 				message
 			};
-		});
-		annotations.sort((a, b) => {
+		})
+		.filter(({from}) => from !== null && to !== null)
+		.sort((a, b) => {
 			switch (true) {
 				case a.from < b.from:
 					return -1;
