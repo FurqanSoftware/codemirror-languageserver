@@ -39,10 +39,6 @@ class LanguageServerPlugin {
 		});
 	}
 
-	// update({view, state, docChanged}) {
-	// 	return null;
-	// }
-
 	destroy() {
 		this.client.close();
 	}
