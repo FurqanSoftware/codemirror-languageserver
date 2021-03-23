@@ -1,5 +1,5 @@
 import { autocompletion } from '@codemirror/autocomplete';
-import { linter } from '@codemirror/lint';
+import { setDiagnostics } from '@codemirror/lint';
 import { Facet } from "@codemirror/state";
 import { hoverTooltip } from '@codemirror/tooltip';
 import { EditorView, ViewPlugin } from "@codemirror/view";
@@ -30,7 +30,6 @@ class LanguageServerPlugin {
 		this.documentUri = this.view.state.facet(documentUri);
 		this.languageId = this.view.state.facet(languageId);
 		this.documentVersion = 0;
-		this.promises = [];
 		this.transport = new WebSocketTransport(this.view.state.facet(serverUri));
 		this.requestManager = new RequestManager([this.transport]);
 		this.client = new Client(this.requestManager);
@@ -157,17 +156,6 @@ class LanguageServerPlugin {
 
 	requestDiagnostics(view) {
 		this.sendChange({documentText: view.state.doc.toString()});
-		return new Promise((fulfill, reject) => {
-			this.promises.push({
-				type: 'diagnostics',
-				fulfill: function() {
-					return fulfill(...arguments);
-				},
-				reject: function() {
-					return reject(...arguments);
-				}
-			});
-		});
 	}
 
 	requestHoverTooltip(view, {line, character}) {
@@ -287,7 +275,7 @@ class LanguageServerPlugin {
 	}
 
 	processDiagnostics({params}) {
-		let annotations = params.diagnostics.map(({range, message, severity}) => {
+		let diagnostics = params.diagnostics.map(({range, message, severity}) => {
 			return {
 				from: posToOffset(this.view.state.doc, range.start),
 				to: posToOffset(this.view.state.doc, range.end),
@@ -300,7 +288,7 @@ class LanguageServerPlugin {
 				message
 			};
 		})
-		.filter(({from}) => from !== null && to !== null)
+		.filter(({from, to}) => from !== null && to !== null)
 		.sort((a, b) => {
 			switch (true) {
 				case a.from < b.from:
@@ -310,11 +298,7 @@ class LanguageServerPlugin {
 			}
 			return 0;
 		});
-		this.promises = this.promises.filter((p) => {
-			if (p.type !== 'diagnostics') return true;
-			p.fulfill(annotations);
-			return false;
-		});
+		this.view.dispatch(setDiagnostics(this.view.state, diagnostics));
 	}
 };
 
@@ -326,7 +310,6 @@ export function languageServer(options) {
 		documentUri.of(options.documentUri),
 		languageId.of(options.languageId),
 		ViewPlugin.define(view => plugin = new LanguageServerPlugin(view)),
-		linter(view => plugin?.requestDiagnostics(view)),
 		hoverTooltip((view, pos, side) => plugin?.requestHoverTooltip(view, offsetToPos(view.state.doc, pos))),
 		autocompletion({
 			override: [
