@@ -23,6 +23,8 @@ const languageId = Facet.define({
 	combine: (values) => values.reduce((_, v) => v, '')
 });
 
+const changesDelay = 500;
+
 class LanguageServerPlugin {
 	constructor(view) {
 		this.view = view;
@@ -30,13 +32,20 @@ class LanguageServerPlugin {
 		this.documentUri = this.view.state.facet(documentUri);
 		this.languageId = this.view.state.facet(languageId);
 		this.documentVersion = 0;
+		this.changesTimeout = null;
 		this.transport = new WebSocketTransport(this.view.state.facet(serverUri));
 		this.requestManager = new RequestManager([this.transport]);
 		this.client = new Client(this.requestManager);
 		this.client.onNotification((data) => { this.processNotification(data); });
-		this.initialize({
-			documentText: this.view.state.doc.toString()
-		});
+		this.initialize({documentText: this.view.state.doc.toString()});
+	}
+
+	update({docChanged}) {
+		if (!docChanged) return;
+		if (this.changesTimeout) clearTimeout(this.changesTimeout);
+		this.changesTimeout = setTimeout(() => {
+			this.sendChange({documentText: this.view.state.doc.toString()});
+		}, changesDelay);
 	}
 
 	destroy() {
