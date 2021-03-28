@@ -187,7 +187,7 @@ class LanguageServerPlugin {
 				const dom = document.createElement('div');
 				dom.classList.add('documentation');
 				dom.textContent = formatContents(contents);
-				fulfill({pos, end, create: view => { return {dom}; }, above: true});
+				fulfill({pos, end, create: view => ({dom}), above: true});
 			})
 			.catch(reason => { reject(reason); });
 		});
