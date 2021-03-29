@@ -275,7 +275,7 @@ class LanguageServerPlugin {
 					this.processDiagnostics(...arguments);
 			}
 		} catch (error) {
-			return console.error(error);
+			console.error(error);
 		}
 	}
 
