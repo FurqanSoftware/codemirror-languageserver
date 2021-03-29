@@ -27,11 +27,11 @@
     "rollup": "^2.40.0"
   },
   "dependencies": {
-    "@codemirror/autocomplete": "^0.18.0",
-    "@codemirror/lint": "^0.18.0",
-    "@codemirror/state": "^0.18.0",
-    "@codemirror/tooltip": "^0.18.1",
-    "@codemirror/view": "^0.18.0",
+    "@codemirror/autocomplete": "^0.18.3",
+    "@codemirror/lint": "^0.18.1",
+    "@codemirror/state": "^0.18.3",
+    "@codemirror/tooltip": "^0.18.4",
+    "@codemirror/view": "^0.18.3",
     "@open-rpc/client-js": "^1.6.2"
   }
 }
