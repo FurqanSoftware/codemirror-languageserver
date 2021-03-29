@@ -6,7 +6,19 @@
   "scripts": {
     "prepare": "rollup --config"
   },
-  "author": "Mahmud Ridwan <m@hjr265.me>",
+  "author": {
+    "name": "Mahmud Ridwan",
+    "email": "m@hjr265.me",
+    "url": "https://hjr265.me"
+  },
+  "homepage": "https://github.com/FurqanSoftware/codemirror-languageserver",
+  "bugs": {
+    "url": "https://github.com/FurqanSoftware/codemirror-languageserver/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FurqanSoftware/codemirror-languageserver.git"
+  },
   "license": "BSD-3-Clause",
   "devDependencies": {
     "@babel/core": "^7.13.8",
