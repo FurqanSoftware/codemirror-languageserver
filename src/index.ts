@@ -1,406 +1,512 @@
 import { autocompletion } from '@codemirror/autocomplete';
 import { setDiagnostics } from '@codemirror/lint';
-import { Facet } from "@codemirror/state";
+import { Facet } from '@codemirror/state';
 import { hoverTooltip } from '@codemirror/tooltip';
-import { EditorView, ViewPlugin } from "@codemirror/view";
-import { RequestManager, Client, WebSocketTransport } from '@open-rpc/client-js';
+import { EditorView, ViewPlugin } from '@codemirror/view';
+import {
+    RequestManager,
+    Client,
+    WebSocketTransport,
+} from '@open-rpc/client-js';
+import {
+    DiagnosticSeverity,
+    CompletionItemKind,
+    CompletionTriggerKind,
+} from 'vscode-languageserver-protocol';
+
+import type {
+    Completion,
+    CompletionContext,
+    CompletionResult,
+} from '@codemirror/autocomplete';
+import type { PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
+import type { ViewUpdate, PluginValue } from '@codemirror/view';
+import type { Text } from '@codemirror/state';
+import type * as LSP from 'vscode-languageserver-protocol';
+import type { Tooltip } from '@codemirror/tooltip';
 
 const timeout = 10000;
-
-const serverUri = Facet.define({
-	combine: (values) => values.reduce((_, v) => v, '')
-});
-
-const rootUri = Facet.define({
-	combine: (values) => values.reduce((_, v) => v, '')
-});
-
-const documentUri = Facet.define({
-	combine: (values) => values.reduce((_, v) => v, '')
-});
-
-const languageId = Facet.define({
-	combine: (values) => values.reduce((_, v) => v, '')
-});
-
 const changesDelay = 500;
 
-class LanguageServerPlugin {
-	constructor(view) {
-		this.view = view;
-		this.rootUri = this.view.state.facet(rootUri);
-		this.documentUri = this.view.state.facet(documentUri);
-		this.languageId = this.view.state.facet(languageId);
-		this.documentVersion = 0;
-		this.changesTimeout = null;
-		this.transport = new WebSocketTransport(this.view.state.facet(serverUri));
-		this.requestManager = new RequestManager([this.transport]);
-		this.client = new Client(this.requestManager);
-		this.client.onNotification((data) => { this.processNotification(data); });
-		this.initialize({documentText: this.view.state.doc.toString()});
-	}
+const CompletionItemKindMap = Object.fromEntries(
+    Object.entries(CompletionItemKind).map(([key, value]) => [value, key])
+) as Record<CompletionItemKind, string>;
 
-	update({docChanged}) {
-		if (!docChanged) return;
-		if (this.changesTimeout) clearTimeout(this.changesTimeout);
-		this.changesTimeout = setTimeout(() => {
-			this.sendChange({documentText: this.view.state.doc.toString()});
-		}, changesDelay);
-	}
+const useLast = (values: readonly string[]) => values.reduce((_, v) => v, '');
 
-	destroy() {
-		this.client.close();
-	}
+const serverUri = Facet.define<string, string>({ combine: useLast });
+const rootUri = Facet.define<string, string>({ combine: useLast });
+const documentUri = Facet.define<string, string>({ combine: useLast });
+const languageId = Facet.define<string, string>({ combine: useLast });
 
-	initialize({documentText}) {
-		this.client.request({
-			method: 'initialize',
-			params: {
-				capabilities: {
-					textDocument: {
-						hover: {
-							dynamicRegistration: true,
-							contentFormat: ['plaintext', 'markdown']
-						},
-						synchronization: {
-							dynamicRegistration: true,
-							willSave: false,
-							didSave: false,
-							willSaveWaitUntil: false
-						},
-						completion: {
-							dynamicRegistration: true,
-							completionItem: {
-								snippetSupport: false,
-								commitCharactersSupport: true,
-								documentationFormat: ['plaintext', 'markdown'],
-								deprecatedSupport: false,
-								preselectSupport: false
-							},
-							contextSupport: false
-						},
-						signatureHelp: {
-							dynamicRegistration: true,
-							signatureInformation: {
-								documentationFormat: ['plaintext', 'markdown']
-							}
-						},
-						declaration: {
-							dynamicRegistration: true,
-							linkSupport: true
-						},
-						definition: {
-							dynamicRegistration: true,
-							linkSupport: true
-						},
-						typeDefinition: {
-							dynamicRegistration: true,
-							linkSupport: true
-						},
-						implementation: {
-							dynamicRegistration: true,
-							linkSupport: true
-						}
-					},
-					workspace: {
-						didChangeConfiguration: {
-							dynamicRegistration: true
-						}
-					}
-				},
-				initializationOptions: null,
-				processId: null,
-				rootUri: this.rootUri,
-				workspaceFolders: [
-					{
-						name: 'root',
-						uri: this.rootUri
-					}
-				]
-			}
-		}, timeout * 3).then(({capabilities, serverInfo}) => {
-			this.capabilities = capabilities;
-			this.client.notify({
-				method: 'initialized',
-				params: {}
-			});
-			this.client.notify({
-				method: 'textDocument/didOpen',
-				params: {
-					textDocument: {
-						uri: this.documentUri,
-						languageId: this.languageId,
-						text: documentText,
-						version: this.documentVersion
-					}
-				}
-			});
-			this.ready = true;
-		});
-	}
+// https://microsoft.github.io/language-server-protocol/specifications/specification-current/
 
-	sendChange({documentText}) {
-		if (!this.ready) return;
-		try {
-			this.client.notify({
-				method: 'textDocument/didChange',
-				params: {
-					textDocument: {
-						uri: this.documentUri,
-						version: this.documentVersion++
-					},
-					contentChanges: [
-						{text: documentText}
-					]
-				}
-			});
-		} catch (e) {
-			console.error(e);
-		}
-	}
+// Client to server then server to client
+interface LSPRequestMap {
+    initialize: [LSP.InitializeParams, LSP.InitializeResult];
+    'textDocument/hover': [LSP.HoverParams, LSP.Hover];
+    'textDocument/completion': [
+        LSP.CompletionParams,
+        LSP.CompletionItem[] | LSP.CompletionList | null
+    ];
+}
 
-	requestDiagnostics(view) {
-		this.sendChange({documentText: view.state.doc.toString()});
-	}
+// Client to server
+interface LSPNotifyMap {
+    initialized: LSP.InitializedParams;
+    'textDocument/didChange': LSP.DidChangeTextDocumentParams;
+    'textDocument/didOpen': LSP.DidOpenTextDocumentParams;
+}
 
-	requestHoverTooltip(view, {line, character}) {
-		if (!this.ready || !this.capabilities.hoverProvider) return null;
-		this.sendChange({documentText: view.state.doc.toString()});
-		return new Promise((fulfill, reject) => {
-			this.client.request({
-				method: 'textDocument/hover',
-				params: {
-					textDocument: {uri: this.documentUri},
-					position: {line, character}
-				}
-			}, timeout)
-			.then((result) => {
-				if (!result) return;
-				let {contents, range} = result;
-				let pos = posToOffset(view.state.doc, {line, character});
-				let end;
-				if (range) {
-					pos = posToOffset(view.state.doc, range.start);
-					end = posToOffset(view.state.doc, range.end);
-				}
-				if (pos === null) return fulfill(null);
-				const dom = document.createElement('div');
-				dom.classList.add('documentation');
-				dom.textContent = formatContents(contents);
-				fulfill({pos, end, create: view => ({dom}), above: true});
-			})
-			.catch(reason => { reject(reason); });
-		});
-	}
+// Server to client
+interface LSPEventMap {
+    'textDocument/publishDiagnostics': LSP.PublishDiagnosticsParams;
+}
 
-	requestCompletion(context, {line, character}, {triggerKind, triggerCharacter}) {
-		if (!this.ready || !this.capabilities.completionProvider) return null;
-		this.sendChange({documentText: context.state.doc.toString()});
-		return this.client.request({
-			method: 'textDocument/completion',
-			params: {
-				textDocument: {uri: this.documentUri},
-				position: {line, character},
-				context: {
-					triggerKind: triggerKind,
-					triggerCharacter: triggerCharacter
-				}
-			}
-		}, timeout).then((result) => {
-			if (!result) return null;
-			let options = result.items.map(({detail, label, kind, textEdit, documentation, sortText, filterText}) => {
-				var completion = {
-					label,
-					detail: detail,
-					apply: textEdit ? textEdit.newText : label,
-					type: {
-						1: 'text',
-						2: 'method',
-						3: 'function',
-						// 4: Constructor
-						// 5: Field
-						6: 'variable',
-						7: 'class',
-						8: 'interface',
-						// 9: Module
-						10: 'property',
-						// 11: Unit
-						// 12: Value
-						13: 'enum',
-						14: 'keyword',
-						// 15: Snippet
-						// 16: Color
-						// 17: File
-						// 18: Reference
-						// 19: Folder
-						// 20: EnumMember
-						21: 'constant'
-					}[kind],
-					sortText: sortText ? sortText : label,
-					filterText: filterText ? filterText : label
-				};
-				if (documentation) completion.info = formatContents(documentation);
-				return completion;
-			});
-			let [span, match] = prefixMatch(options);
-			let token = context.matchBefore(match);
-			let pos = context.pos;
-			if (token) {
-				pos = token.from;
-				let word = token.text.toLowerCase();
-				if (/^\w+$/.test(word)) {
-					options = options.filter(({filterText}) => filterText.toLowerCase().indexOf(word) === 0)
-					.sort((a, b) => {
-						switch (true) {
-							case a.apply.indexOf(token.text) === 0 && b.apply.indexOf(token.text) !== 0:
-								return -1;
-							case a.apply.indexOf(token.text) !== 0 && b.apply.indexOf(token.text) === 0:
-								return 1;
-						}
-						return 0;
-					});
-				}
-			}
-			return {
-				from: pos,
-				options
-			};
-		});
-	}
+type Notification = {
+    [key in keyof LSPEventMap]: {
+        jsonrpc: '2.0';
+        id?: null | undefined;
+        method: key;
+        params: LSPEventMap[key];
+    };
+}[keyof LSPEventMap];
 
-	processNotification({method}) {
-		try {
-			switch (method) {
-				case 'textDocument/publishDiagnostics':
-					this.processDiagnostics(...arguments);
-			}
-		} catch (error) {
-			console.error(error);
-		}
-	}
+class LanguageServerPlugin implements PluginValue {
+    private rootUri: string;
+    private documentUri: string;
+    private languageId: string;
+    private documentVersion: number;
+    private transport: WebSocketTransport;
+    private requestManager: RequestManager;
+    private client: Client;
+    private changesTimeout: number;
+    private ready?: boolean;
+    public capabilities?: LSP.ServerCapabilities<any>;
 
-	processDiagnostics({params}) {
-		let diagnostics = params.diagnostics.map(({range, message, severity}) => {
-			return {
-				from: posToOffset(this.view.state.doc, range.start),
-				to: posToOffset(this.view.state.doc, range.end),
-				severity: {
-					1: 'error',
-					2: 'warning',
-					3: 'info',
-					4: 'info'
-				}[severity],
-				message
-			};
-		})
-		.filter(({from, to}) => from !== null && to !== null)
-		.sort((a, b) => {
-			switch (true) {
-				case a.from < b.from:
-					return -1;
-				case a.from > b.from:
-					return 1;
-			}
-			return 0;
-		});
-		this.view.dispatch(setDiagnostics(this.view.state, diagnostics));
-	}
-};
+    constructor(private view: EditorView) {
+        this.rootUri = this.view.state.facet(rootUri);
+        this.documentUri = this.view.state.facet(documentUri);
+        this.languageId = this.view.state.facet(languageId);
+        this.documentVersion = 0;
+        this.changesTimeout = 0;
+        this.transport = new WebSocketTransport(
+            this.view.state.facet(serverUri)
+        );
+        this.requestManager = new RequestManager([this.transport]);
+        this.client = new Client(this.requestManager);
+        this.client.onNotification((data) => {
+            this.processNotification(data as any);
+        });
+        this.initialize({
+            documentText: this.view.state.doc.toString(),
+        });
+    }
 
-export function languageServer(options) {
-	var plugin;
-	return [
-		serverUri.of(options.serverUri),
-		rootUri.of(options.rootUri),
-		documentUri.of(options.documentUri),
-		languageId.of(options.languageId),
-		ViewPlugin.define(view => plugin = new LanguageServerPlugin(view)),
-		hoverTooltip((view, pos, side) => plugin?.requestHoverTooltip(view, offsetToPos(view.state.doc, pos))),
-		autocompletion({
-			override: [
-				(context) => {
-					if (plugin == null) return null;
-					let {state, pos, explicit} = context;
-					let line = state.doc.lineAt(pos);
-					let trigKind = 1; // Invoked
-					let trigChar = void 0;
-					if (!explicit &&
-							plugin.capabilities &&
-							plugin.capabilities.completionProvider &&
-							plugin.capabilities.completionProvider.triggerCharacters &&
-							plugin.capabilities.completionProvider.triggerCharacters.indexOf(line.text[pos - line.from - 1]) >= 0) {
-						trigKind = 2; // TriggerCharacter
-						trigChar = line.text[pos - line.from - 1];
-					}
-					if (trigKind === 1 && !context.matchBefore(/\w+$/)) return null;
-					return plugin.requestCompletion(context, offsetToPos(state.doc, pos), {
-						triggerKind: trigKind,
-						triggerCharacter: trigChar
-					});
-				}
-			]
-		}),
-		baseTheme
-	];
-};
+    update({ docChanged }: ViewUpdate) {
+        if (!docChanged) return;
+        if (this.changesTimeout) clearTimeout(this.changesTimeout);
+        this.changesTimeout = self.setTimeout(() => {
+            this.sendChange({
+                documentText: this.view.state.doc.toString(),
+            });
+        }, changesDelay);
+    }
 
-function posToOffset(doc, pos) {
-	if (pos.line >= doc.lines) return null;
-	return doc.line(pos.line + 1).from + pos.character;
-};
+    destroy() {
+        this.client.close();
+    }
 
-function offsetToPos(doc, offset) {
-	var line = doc.lineAt(offset);
-	return {
-		line: line.number - 1,
-		character: offset - line.from
-	};
-};
+    private request<K extends keyof LSPRequestMap>(
+        timeout: number,
+        method: K,
+        params: LSPRequestMap[K][0]
+    ): Promise<LSPRequestMap[K][1]> {
+        return this.client.request({ method, params }, timeout);
+    }
 
-function formatContents(contents) {
-	if (Array.isArray(contents)) {
-		let text = '';
-		for (const c of contents) text += formatContents(c) + '\n\n';
-		return text;
-	}
-	if (typeof contents === 'string') return contents;
-	return contents.value;
-};
+    private notify<K extends keyof LSPNotifyMap>(
+        method: K,
+        params: LSPNotifyMap[K]
+    ): Promise<LSPNotifyMap[K]> {
+        return this.client.notify({ method, params });
+    }
 
-function toSet(chars) {
-	var flat, preamble, words;
-	preamble = "";
-	flat = Object.keys(chars).join('');
-	words = /\w/.test(flat);
-	if (words) {
-		preamble += "\\w";
-		flat = flat.replace(/\w/g, '');
-	}
-	return `[${preamble}${flat.replace(/[^\w\s]/g, '\\$&')}]`;
-};
+    async initialize({ documentText }: { documentText: string }) {
+        const { capabilities } = await this.request(timeout * 3, 'initialize', {
+            capabilities: {
+                textDocument: {
+                    hover: {
+                        dynamicRegistration: true,
+                        contentFormat: ['plaintext', 'markdown'],
+                    },
+                    moniker: {},
+                    synchronization: {
+                        dynamicRegistration: true,
+                        willSave: false,
+                        didSave: false,
+                        willSaveWaitUntil: false,
+                    },
+                    completion: {
+                        dynamicRegistration: true,
+                        completionItem: {
+                            snippetSupport: false,
+                            commitCharactersSupport: true,
+                            documentationFormat: ['plaintext', 'markdown'],
+                            deprecatedSupport: false,
+                            preselectSupport: false,
+                        },
+                        contextSupport: false,
+                    },
+                    signatureHelp: {
+                        dynamicRegistration: true,
+                        signatureInformation: {
+                            documentationFormat: ['plaintext', 'markdown'],
+                        },
+                    },
+                    declaration: {
+                        dynamicRegistration: true,
+                        linkSupport: true,
+                    },
+                    definition: {
+                        dynamicRegistration: true,
+                        linkSupport: true,
+                    },
+                    typeDefinition: {
+                        dynamicRegistration: true,
+                        linkSupport: true,
+                    },
+                    implementation: {
+                        dynamicRegistration: true,
+                        linkSupport: true,
+                    },
+                },
+                workspace: {
+                    didChangeConfiguration: {
+                        dynamicRegistration: true,
+                    },
+                },
+            },
+            initializationOptions: null,
+            processId: null,
+            rootUri: this.rootUri,
+            workspaceFolders: [
+                {
+                    name: 'root',
+                    uri: this.rootUri,
+                },
+            ],
+        });
+        this.capabilities = capabilities;
+        this.notify('initialized', {});
+        this.notify('textDocument/didOpen', {
+            textDocument: {
+                uri: this.documentUri,
+                languageId: this.languageId,
+                text: documentText,
+                version: this.documentVersion,
+            },
+        });
+        this.ready = true;
+    }
 
-function prefixMatch(options) {
-	var i, j, k, len, ref, source;
-	let first = {};
-	let rest = {};
-	for (const o of options) {
-		const {apply} = o;
-		first[apply[0]] = true;
-		for (var i = 1; i < apply.length; i++) rest[apply[i]] = true;
-	}
-	source = toSet(first) + toSet(rest) + "*$";
-	return [new RegExp("^" + source), new RegExp(source)];
-};
+    async sendChange({ documentText }: { documentText: string }) {
+        if (!this.ready) return;
+        try {
+            await this.notify('textDocument/didChange', {
+                textDocument: {
+                    uri: this.documentUri,
+                    version: this.documentVersion++,
+                },
+                contentChanges: [{ text: documentText }],
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    requestDiagnostics(view: EditorView) {
+        this.sendChange({ documentText: view.state.doc.toString() });
+    }
+
+    async requestHoverTooltip(
+        view: EditorView,
+        { line, character }: { line: number; character: number }
+    ): Promise<Tooltip | null> {
+        if (!this.ready || !this.capabilities!.hoverProvider) return null;
+
+        this.sendChange({ documentText: view.state.doc.toString() });
+        const result = await this.request(timeout, 'textDocument/hover', {
+            textDocument: { uri: this.documentUri },
+            position: { line, character },
+        });
+        if (!result) return null;
+        const { contents, range } = result;
+        let pos = posToOffset(view.state.doc, { line, character })!;
+        let end: number;
+        if (range) {
+            pos = posToOffset(view.state.doc, range.start)!;
+            end = posToOffset(view.state.doc, range.end);
+        }
+        if (pos === null) return null;
+        const dom = document.createElement('div');
+        dom.classList.add('documentation');
+        dom.textContent = formatContents(contents);
+        return { pos, end, create: (view) => ({ dom }), above: true };
+    }
+
+    async requestCompletion(
+        context: CompletionContext,
+        { line, character }: { line: number; character: number },
+        {
+            triggerKind,
+            triggerCharacter,
+        }: {
+            triggerKind: CompletionTriggerKind;
+            triggerCharacter: string | undefined;
+        }
+    ): Promise<CompletionResult | null> {
+        if (!this.ready || !this.capabilities!.completionProvider) return null;
+        this.sendChange({
+            documentText: context.state.doc.toString(),
+        });
+
+        const result = await this.request(timeout, 'textDocument/completion', {
+            textDocument: { uri: this.documentUri },
+            position: { line, character },
+            context: {
+                triggerKind,
+                triggerCharacter,
+            },
+        });
+
+        if (!result) return null;
+
+        const items = 'items' in result ? result.items : result;
+
+        let options = items.map(
+            ({
+                detail,
+                label,
+                kind,
+                textEdit,
+                documentation,
+                sortText,
+                filterText,
+            }) => {
+                const completion: Completion & {
+                    filterText: string;
+                    sortText?: string;
+                    apply: string;
+                } = {
+                    label,
+                    detail,
+                    apply: textEdit?.newText ?? label,
+                    type: kind && CompletionItemKindMap[kind].toLowerCase(),
+                    sortText: sortText ?? label,
+                    filterText: filterText ?? label,
+                };
+                if (documentation) {
+                    completion.info = formatContents(documentation);
+                }
+                return completion;
+            }
+        );
+
+        const [span, match] = prefixMatch(options);
+        const token = context.matchBefore(match);
+        let { pos } = context;
+
+        if (token) {
+            pos = token.from;
+            const word = token.text.toLowerCase();
+            if (/^\w+$/.test(word)) {
+                options = options
+                    .filter(({ filterText }) =>
+                        filterText.toLowerCase().startsWith(word)
+                    )
+                    .sort(({ apply: a }, { apply: b }) => {
+                        switch (true) {
+                            case a.startsWith(token.text) &&
+                                !b.startsWith(token.text):
+                                return -1;
+                            case !a.startsWith(token.text) &&
+                                b.startsWith(token.text):
+                                return 1;
+                        }
+                        return 0;
+                    });
+            }
+        }
+        return {
+            from: pos,
+            options,
+        };
+    }
+
+    processNotification(notification: Notification) {
+        try {
+            switch (notification.method) {
+                case 'textDocument/publishDiagnostics':
+                    this.processDiagnostics(notification.params);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    processDiagnostics(params: PublishDiagnosticsParams) {
+        const diagnostics = params.diagnostics
+            .map(({ range, message, severity }) => ({
+                from: posToOffset(this.view.state.doc, range.start)!,
+                to: posToOffset(this.view.state.doc, range.end)!,
+                severity: ({
+                    [DiagnosticSeverity.Error]: 'error',
+                    [DiagnosticSeverity.Warning]: 'warning',
+                    [DiagnosticSeverity.Information]: 'info',
+                    [DiagnosticSeverity.Hint]: 'info',
+                } as const)[severity!],
+                message,
+            }))
+            .filter(({ from, to }) => from !== null && to !== null)
+            .sort((a, b) => {
+                switch (true) {
+                    case a.from < b.from:
+                        return -1;
+                    case a.from > b.from:
+                        return 1;
+                }
+                return 0;
+            });
+
+        this.view.dispatch(setDiagnostics(this.view.state, diagnostics));
+    }
+}
+
+interface LanguageServerOptions {
+    serverUri: `ws://${string}` | `wss://${string}`;
+    rootUri: string;
+    documentUri: string;
+    languageId: string;
+}
+
+export function languageServer(options: LanguageServerOptions) {
+    let plugin: LanguageServerPlugin | null = null;
+
+    return [
+        serverUri.of(options.serverUri),
+        rootUri.of(options.rootUri),
+        documentUri.of(options.documentUri),
+        languageId.of(options.languageId),
+        ViewPlugin.define((view) => (plugin = new LanguageServerPlugin(view))),
+        hoverTooltip(
+            (view, pos) =>
+                plugin?.requestHoverTooltip(
+                    view,
+                    offsetToPos(view.state.doc, pos)
+                ) ?? null
+        ),
+        autocompletion({
+            override: [
+                async (context) => {
+                    if (plugin == null) return null;
+
+                    const { state, pos, explicit } = context;
+                    const line = state.doc.lineAt(pos);
+                    let trigKind: CompletionTriggerKind =
+                        CompletionTriggerKind.Invoked;
+                    let trigChar: string | undefined;
+                    if (
+                        !explicit &&
+                        plugin.capabilities?.completionProvider?.triggerCharacters?.includes(
+                            line.text[pos - line.from - 1]
+                        )
+                    ) {
+                        trigKind = CompletionTriggerKind.TriggerCharacter;
+                        trigChar = line.text[pos - line.from - 1];
+                    }
+                    if (
+                        trigKind === CompletionTriggerKind.Invoked &&
+                        !context.matchBefore(/\w+$/)
+                    ) {
+                        return null;
+                    }
+                    return await plugin.requestCompletion(
+                        context,
+                        offsetToPos(state.doc, pos),
+                        {
+                            triggerKind: trigKind,
+                            triggerCharacter: trigChar,
+                        }
+                    );
+                },
+            ],
+        }),
+        baseTheme,
+    ];
+}
+
+function posToOffset(doc: Text, pos: { line: number; character: number }) {
+    if (pos.line >= doc.lines) return;
+    return doc.line(pos.line + 1).from + pos.character;
+}
+
+function offsetToPos(doc: Text, offset: number) {
+    const line = doc.lineAt(offset);
+    return {
+        line: line.number - 1,
+        character: offset - line.from,
+    };
+}
+
+function formatContents(
+    contents: LSP.MarkupContent | LSP.MarkedString | LSP.MarkedString[]
+): string {
+    if (Array.isArray(contents)) {
+        return contents.map((c) => formatContents(c) + '\n\n').join('');
+    } else if (typeof contents === 'string') {
+        return contents;
+    } else {
+        return contents.value;
+    }
+}
+
+function toSet(chars: Set<string>) {
+    let preamble = '';
+    let flat = Array.from(chars).join('');
+    const words = /\w/.test(flat);
+    if (words) {
+        preamble += '\\w';
+        flat = flat.replace(/\w/g, '');
+    }
+    return `[${preamble}${flat.replace(/[^\w\s]/g, '\\$&')}]`;
+}
+
+function prefixMatch(options: Completion[]) {
+    const first = new Set<string>();
+    const rest = new Set<string>();
+
+    for (const { apply } of options) {
+        const [initial, ...restStr] = apply as string;
+        first.add(initial);
+        for (const char of restStr) {
+            rest.add(char);
+        }
+    }
+
+    const source = toSet(first) + toSet(rest) + '*$';
+    return [new RegExp('^' + source), new RegExp(source)];
+}
 
 const baseTheme = EditorView.baseTheme({
-	'.cm-tooltip.documentation': {
-		display: 'block',
-		marginLeft: '0',
-		padding: '3px 6px 3px 8px',
-		borderLeft: '5px solid #999',
-		whiteSpace: 'pre'
-	},
-	'.cm-tooltip.lint': {
-		whiteSpace: 'pre'
-	}
+    '.cm-tooltip.documentation': {
+        display: 'block',
+        marginLeft: '0',
+        padding: '3px 6px 3px 8px',
+        borderLeft: '5px solid #999',
+        whiteSpace: 'pre',
+    },
+    '.cm-tooltip.lint': {
+        whiteSpace: 'pre',
+    },
 });
