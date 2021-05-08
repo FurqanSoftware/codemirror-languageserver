@@ -368,7 +368,7 @@ class LanguageServerPlugin implements PluginValue {
                 } as const)[severity!],
                 message,
             }))
-            .filter(({ from, to }) => from !== null && to !== null)
+            .filter(({ from, to }) => from !== null && to !== null && from !== undefined && to !== undefined)
             .sort((a, b) => {
                 switch (true) {
                     case a.from < b.from:
@@ -448,7 +448,9 @@ export function languageServer(options: LanguageServerOptions) {
 
 function posToOffset(doc: Text, pos: { line: number; character: number }) {
     if (pos.line >= doc.lines) return;
-    return doc.line(pos.line + 1).from + pos.character;
+    const offset = doc.line(pos.line + 1).from + pos.character;
+    if (offset > doc.length) return;
+    return offset;
 }
 
 function offsetToPos(doc: Text, offset: number) {
