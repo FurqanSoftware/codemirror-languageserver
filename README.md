@@ -22,7 +22,7 @@ var view = new EditorView({
 	state: EditorState.create({
 		extensions: [
 			// ...
-			ls(),
+			ls,
 			// ...
 		]
 	})
