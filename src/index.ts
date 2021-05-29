@@ -118,9 +118,9 @@ class LanguageServerPlugin implements PluginValue {
     }
 
     private request<K extends keyof LSPRequestMap>(
-        timeout: number,
         method: K,
-        params: LSPRequestMap[K][0]
+        params: LSPRequestMap[K][0],
+        timeout: number
     ): Promise<LSPRequestMap[K][1]> {
         return this.client.request({ method, params }, timeout);
     }
@@ -133,7 +133,7 @@ class LanguageServerPlugin implements PluginValue {
     }
 
     async initialize({ documentText }: { documentText: string }) {
-        const { capabilities } = await this.request(timeout * 3, 'initialize', {
+        const { capabilities } = await this.request('initialize', {
             capabilities: {
                 textDocument: {
                     hover: {
@@ -196,7 +196,7 @@ class LanguageServerPlugin implements PluginValue {
                     uri: this.rootUri,
                 },
             ],
-        });
+        }, timeout * 3);
         this.capabilities = capabilities;
         this.notify('initialized', {});
         this.notify('textDocument/didOpen', {
@@ -236,10 +236,10 @@ class LanguageServerPlugin implements PluginValue {
         if (!this.ready || !this.capabilities!.hoverProvider) return null;
 
         this.sendChange({ documentText: view.state.doc.toString() });
-        const result = await this.request(timeout, 'textDocument/hover', {
+        const result = await this.request('textDocument/hover', {
             textDocument: { uri: this.documentUri },
             position: { line, character },
-        });
+        }, timeout);
         if (!result) return null;
         const { contents, range } = result;
         let pos = posToOffset(view.state.doc, { line, character })!;
@@ -271,14 +271,14 @@ class LanguageServerPlugin implements PluginValue {
             documentText: context.state.doc.toString(),
         });
 
-        const result = await this.request(timeout, 'textDocument/completion', {
+        const result = await this.request('textDocument/completion', {
             textDocument: { uri: this.documentUri },
             position: { line, character },
             context: {
                 triggerKind,
                 triggerCharacter,
             },
-        });
+        }, timeout);
 
         if (!result) return null;
 
