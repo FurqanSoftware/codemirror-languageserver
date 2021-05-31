@@ -8,6 +8,10 @@ This plugin enables code completion, hover tooltips, and linter functionality by
 
 ## Usage
 
+```
+npm i codemirror-languageserver
+```
+
 ``` js
 import { languageServer } from 'codemirror-languageserver';
 
@@ -32,6 +36,10 @@ var view = new EditorView({
 ## Contributing
 
 Contributions are welcome.
+
+## Real World Uses
+
+- [Toph](https://toph.co)
 
 ## License
 
