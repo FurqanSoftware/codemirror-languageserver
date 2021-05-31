@@ -41,7 +41,9 @@ Contributions are welcome.
 
 https://user-images.githubusercontent.com/348107/120141150-c6bb9180-c1fd-11eb-8ada-9b7b7a1e4ade.mp4
 
-- [Toph](https://toph.co)
+| | |
+| --- | --- |
+| [Toph](https://toph.co) | Competitive programming platform |
 
 ## License
 
