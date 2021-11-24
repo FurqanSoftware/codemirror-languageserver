@@ -4,7 +4,7 @@
   "description": "Language Server Plugin for CodeMirror 6",
   "main": "dist/index.js",
   "scripts": {
-    "prepare": "rollup --config"
+    "prepare": "rollup -c rollup.config.js"
   },
   "author": {
     "name": "Mahmud Ridwan",
