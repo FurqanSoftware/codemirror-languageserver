@@ -1,6 +1,6 @@
 {
   "name": "codemirror-languageserver",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Language Server Plugin for CodeMirror 6",
   "main": "dist/index.js",
   "scripts": {
@@ -32,10 +32,10 @@
   "dependencies": {
     "@codemirror/autocomplete": "^0.19.8",
     "@codemirror/lint": "^0.19.3",
-    "@codemirror/state": "^0.19.6",
-    "@codemirror/tooltip": "^0.19.7",
-    "@codemirror/view": "^0.19.19",
-    "@open-rpc/client-js": "^1.6.2",
+    "@codemirror/state": "^0.19.8",
+    "@codemirror/tooltip": "^0.19.14",
+    "@codemirror/view": "^0.19.43",
+    "@open-rpc/client-js": "^1.7.1",
     "vscode-languageserver-protocol": "^3.16.0"
   },
   "prettier": {
