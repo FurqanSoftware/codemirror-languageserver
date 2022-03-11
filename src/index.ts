@@ -35,7 +35,7 @@ const CompletionItemKindMap = Object.fromEntries(
 const useLast = (values: readonly string[]) => values.reduce((_, v) => v, '');
 
 const serverUri = Facet.define<string, string>({ combine: useLast });
-const rootUri = Facet.define<string, string>({ combine: useLast });
+const rootUri = Facet.define<string, string | undefined>({ combine: useLast });
 const documentUri = Facet.define<string, string>({ combine: useLast });
 const languageId = Facet.define<string, string>({ combine: useLast });
 
@@ -190,7 +190,7 @@ class LanguageServerPlugin implements PluginValue {
             initializationOptions: null,
             processId: null,
             rootUri: this.rootUri,
-            workspaceFolders: [
+            workspaceFolders: this.rootUri && [
                 {
                     name: 'root',
                     uri: this.rootUri,
@@ -385,7 +385,7 @@ class LanguageServerPlugin implements PluginValue {
 
 interface LanguageServerOptions {
     serverUri: `ws://${string}` | `wss://${string}`;
-    rootUri: string;
+    rootUri?: string;
     documentUri: string;
     languageId: string;
 }
