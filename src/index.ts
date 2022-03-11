@@ -104,6 +104,11 @@ class LanguageServerPlugin implements PluginValue {
         this.initialize({
             documentText: this.view.state.doc.toString(),
         });
+        this.transport.connection.addEventListener('message', (message) => {
+            const data = JSON.parse(message.data);
+            if (data.method && data.id)
+                this.processRequest(data);
+        });
     }
 
     update({ docChanged }: ViewUpdate) {
@@ -340,6 +345,14 @@ class LanguageServerPlugin implements PluginValue {
             from: pos,
             options,
         };
+    }
+
+    processRequest({ id }: { id: string }) {
+        this.transport.connection.send(JSON.stringify({
+            jsonrpc: '2.0',
+            id,
+            result: null
+        }));
     }
 
     processNotification(notification: Notification) {
