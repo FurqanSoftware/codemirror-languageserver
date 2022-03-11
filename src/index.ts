@@ -32,10 +32,11 @@ const CompletionItemKindMap = Object.fromEntries(
     Object.entries(CompletionItemKind).map(([key, value]) => [value, key])
 ) as Record<CompletionItemKind, string>;
 
-const useLast = (values: readonly string[]) => values.reduce((_, v) => v, '');
+const useLast = (values: readonly any[]) => values.reduce((_, v) => v, '');
 
 const serverUri = Facet.define<string, string>({ combine: useLast });
-const rootUri = Facet.define<string, string>({ combine: useLast });
+const rootUri = Facet.define<string | null, string | null>({ combine: useLast });
+const workspaceFolders = Facet.define<LSP.WorkspaceFolder[] | null, LSP.WorkspaceFolder[] | null>({ combine: useLast });
 const documentUri = Facet.define<string, string>({ combine: useLast });
 const languageId = Facet.define<string, string>({ combine: useLast });
 
@@ -74,6 +75,7 @@ type Notification = {
 
 class LanguageServerPlugin implements PluginValue {
     private rootUri: string;
+    private workspaceFolders: LSP.WorkspaceFolder[];
     private documentUri: string;
     private languageId: string;
     private documentVersion: number;
@@ -86,6 +88,7 @@ class LanguageServerPlugin implements PluginValue {
 
     constructor(private view: EditorView) {
         this.rootUri = this.view.state.facet(rootUri);
+        this.workspaceFolders = this.view.state.facet(workspaceFolders);
         this.documentUri = this.view.state.facet(documentUri);
         this.languageId = this.view.state.facet(languageId);
         this.documentVersion = 0;
@@ -190,12 +193,7 @@ class LanguageServerPlugin implements PluginValue {
             initializationOptions: null,
             processId: null,
             rootUri: this.rootUri,
-            workspaceFolders: [
-                {
-                    name: 'root',
-                    uri: this.rootUri,
-                },
-            ],
+            workspaceFolders: this.workspaceFolders,
         }, timeout * 3);
         this.capabilities = capabilities;
         this.notify('initialized', {});
@@ -385,7 +383,8 @@ class LanguageServerPlugin implements PluginValue {
 
 interface LanguageServerOptions {
     serverUri: `ws://${string}` | `wss://${string}`;
-    rootUri: string;
+    rootUri: string | null;
+    workspaceFolders: LSP.WorkspaceFolder[] | null;
     documentUri: string;
     languageId: string;
 }
@@ -395,6 +394,7 @@ export function languageServer(options: LanguageServerOptions) {
 
     return [
         serverUri.of(options.serverUri),
+        workspaceFolders.of(options.workspaceFolders),
         rootUri.of(options.rootUri),
         documentUri.of(options.documentUri),
         languageId.of(options.languageId),
