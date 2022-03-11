@@ -101,6 +101,15 @@ class LanguageServerPlugin implements PluginValue {
         this.initialize({
             documentText: this.view.state.doc.toString(),
         });
+        this.transport.connection.addEventListener(
+            'message',
+            (message: any) => {
+                const data = JSON.parse(message.data);
+                if (data.method && data.id) {
+                    this.processRequest(data);
+                }
+            }
+        );
     }
 
     update({ docChanged }: ViewUpdate) {
@@ -353,6 +362,15 @@ class LanguageServerPlugin implements PluginValue {
         } catch (error) {
             console.error(error);
         }
+    }
+
+    processRequest({ id }: any) {
+        // Respond to all requests with an empty result, as every processed
+        // request must send a response back to the sender of the request.
+        // https://microsoft.github.io/language-server-protocol/specifications/specification-current/#requestMessage
+        this.transport.connection.send(
+            JSON.stringify({ jsonrpc: '2.0', id, result: null })
+        );
     }
 
     processDiagnostics(params: PublishDiagnosticsParams) {
