@@ -34,9 +34,7 @@ const CompletionItemKindMap = Object.fromEntries(
 
 const useLast = (values: readonly any[]) => values.reduce((_, v) => v, '');
 
-const serverUri = Facet.define<string, string>({ combine: useLast });
-const rootUri = Facet.define<string | null, string | null>({ combine: useLast });
-const workspaceFolders = Facet.define<LSP.WorkspaceFolder[] | null, LSP.WorkspaceFolder[] | null>({ combine: useLast });
+const client = Facet.define<LanguageServerClient, LanguageServerClient>({ combine: useLast });
 const documentUri = Facet.define<string, string>({ combine: useLast });
 const languageId = Facet.define<string, string>({ combine: useLast });
 
@@ -73,74 +71,45 @@ type Notification = {
     };
 }[keyof LSPEventMap];
 
-class LanguageServerPlugin implements PluginValue {
+export class LanguageServerClient {
+    private serverUri: string;
     private rootUri: string;
     private workspaceFolders: LSP.WorkspaceFolder[];
-    private documentUri: string;
-    private languageId: string;
-    private documentVersion: number;
+    private autoClose?: boolean;
+
     private transport: WebSocketTransport;
     private requestManager: RequestManager;
     private client: Client;
-    private changesTimeout: number;
-    private ready?: boolean;
-    public capabilities?: LSP.ServerCapabilities<any>;
 
-    constructor(private view: EditorView) {
-        this.rootUri = this.view.state.facet(rootUri);
-        this.workspaceFolders = this.view.state.facet(workspaceFolders);
-        this.documentUri = this.view.state.facet(documentUri);
-        this.languageId = this.view.state.facet(languageId);
-        this.documentVersion = 0;
-        this.changesTimeout = 0;
-        this.transport = new WebSocketTransport(
-            this.view.state.facet(serverUri)
-        );
+    public ready: boolean;
+    public capabilities: LSP.ServerCapabilities<any>;
+
+    private plugins: LanguageServerPlugin[];
+
+    constructor(options: LanguageServerClientOptions) {
+        this.serverUri = options.serverUri;
+        this.rootUri = options.rootUri;
+        this.workspaceFolders = options.workspaceFolders;
+        this.autoClose = options.autoClose;
+        this.plugins = [];
+
+        this.transport = new WebSocketTransport(this.serverUri);
         this.requestManager = new RequestManager([this.transport]);
         this.client = new Client(this.requestManager);
+
         this.client.onNotification((data) => {
             this.processNotification(data as any);
         });
-        this.initialize({
-            documentText: this.view.state.doc.toString(),
-        });
+
         this.transport.connection.addEventListener('message', (message) => {
             const data = JSON.parse(message.data);
             if (data.method && data.id)
                 this.processRequest(data);
         });
+        this.initialize();
     }
 
-    update({ docChanged }: ViewUpdate) {
-        if (!docChanged) return;
-        if (this.changesTimeout) clearTimeout(this.changesTimeout);
-        this.changesTimeout = self.setTimeout(() => {
-            this.sendChange({
-                documentText: this.view.state.doc.toString(),
-            });
-        }, changesDelay);
-    }
-
-    destroy() {
-        this.client.close();
-    }
-
-    private request<K extends keyof LSPRequestMap>(
-        method: K,
-        params: LSPRequestMap[K][0],
-        timeout: number
-    ): Promise<LSPRequestMap[K][1]> {
-        return this.client.request({ method, params }, timeout);
-    }
-
-    private notify<K extends keyof LSPNotifyMap>(
-        method: K,
-        params: LSPNotifyMap[K]
-    ): Promise<LSPNotifyMap[K]> {
-        return this.client.notify({ method, params });
-    }
-
-    async initialize({ documentText }: { documentText: string }) {
+    async initialize() {
         const { capabilities } = await this.request('initialize', {
             capabilities: {
                 textDocument: {
@@ -202,21 +171,121 @@ class LanguageServerPlugin implements PluginValue {
         }, timeout * 3);
         this.capabilities = capabilities;
         this.notify('initialized', {});
-        this.notify('textDocument/didOpen', {
+        this.ready = true;
+    }
+
+    close() {
+        this.client.close();
+    }
+
+    textDocumentDidOpen(params: LSP.DidOpenTextDocumentParams) {
+        return this.notify('textDocument/didOpen', params);
+    }
+
+    textDocumentDidChange(params: LSP.DidChangeTextDocumentParams) {
+        return this.notify('textDocument/didChange', params)
+    }
+
+    async textDocumentHover(params: LSP.HoverParams) {
+        return await this.request('textDocument/hover', params, timeout)
+    }
+
+    async textDocumentCompletion(params: LSP.CompletionParams) {
+        return await this.request('textDocument/completion', params, timeout)
+    }
+
+    attachPlugin(plugin: LanguageServerPlugin) {
+        this.plugins.push(plugin);
+    }
+
+    detachPlugin(plugin: LanguageServerPlugin) {
+        const i = this.plugins.indexOf(plugin);
+        if (i === -1) return;
+        this.plugins.splice(i, 1);
+        if (this.autoClose) this.close();
+    }
+
+    private request<K extends keyof LSPRequestMap>(
+        method: K,
+        params: LSPRequestMap[K][0],
+        timeout: number
+    ): Promise<LSPRequestMap[K][1]> {
+        return this.client.request({ method, params }, timeout);
+    }
+
+    private notify<K extends keyof LSPNotifyMap>(
+        method: K,
+        params: LSPNotifyMap[K]
+    ): Promise<LSPNotifyMap[K]> {
+        return this.client.notify({ method, params });
+    }
+
+    private processRequest({ id }: { id: string }) {
+        this.transport.connection.send(JSON.stringify({
+            jsonrpc: '2.0',
+            id,
+            result: null
+        }));
+    }
+
+    private processNotification(notification: Notification) {
+        for (const plugin of this.plugins)
+            plugin.processNotification(notification);
+    }
+}
+
+class LanguageServerPlugin implements PluginValue {
+    public client: LanguageServerClient;
+
+    private documentUri: string;
+    private languageId: string;
+    private documentVersion: number;
+    
+    private changesTimeout: number;
+
+    constructor(private view: EditorView) {
+        this.client = this.view.state.facet(client);
+        this.documentUri = this.view.state.facet(documentUri);
+        this.languageId = this.view.state.facet(languageId);
+        this.documentVersion = 0;
+        this.changesTimeout = 0;
+
+        this.client.attachPlugin(this);
+        
+        this.initialize({
+            documentText: this.view.state.doc.toString(),
+        });
+    }
+
+    update({ docChanged }: ViewUpdate) {
+        if (!docChanged) return;
+        if (this.changesTimeout) clearTimeout(this.changesTimeout);
+        this.changesTimeout = self.setTimeout(() => {
+            this.sendChange({
+                documentText: this.view.state.doc.toString(),
+            });
+        }, changesDelay);
+    }
+
+    destroy() {
+        this.client.detachPlugin(this);
+    }
+
+    async initialize({ documentText }: { documentText: string }) {
+        this.client.textDocumentDidOpen({
             textDocument: {
                 uri: this.documentUri,
                 languageId: this.languageId,
                 text: documentText,
                 version: this.documentVersion,
-            },
+            }
         });
-        this.ready = true;
     }
 
     async sendChange({ documentText }: { documentText: string }) {
-        if (!this.ready) return;
+        if (!this.client.ready) return;
         try {
-            await this.notify('textDocument/didChange', {
+            await this.client.textDocumentDidChange({
                 textDocument: {
                     uri: this.documentUri,
                     version: this.documentVersion++,
@@ -236,13 +305,13 @@ class LanguageServerPlugin implements PluginValue {
         view: EditorView,
         { line, character }: { line: number; character: number }
     ): Promise<Tooltip | null> {
-        if (!this.ready || !this.capabilities!.hoverProvider) return null;
+        if (!this.client.ready || !this.client.capabilities!.hoverProvider) return null;
 
         this.sendChange({ documentText: view.state.doc.toString() });
-        const result = await this.request('textDocument/hover', {
+        const result = await this.client.textDocumentHover({
             textDocument: { uri: this.documentUri },
             position: { line, character },
-        }, timeout);
+        });
         if (!result) return null;
         const { contents, range } = result;
         let pos = posToOffset(view.state.doc, { line, character })!;
@@ -269,19 +338,19 @@ class LanguageServerPlugin implements PluginValue {
             triggerCharacter: string | undefined;
         }
     ): Promise<CompletionResult | null> {
-        if (!this.ready || !this.capabilities!.completionProvider) return null;
+        if (!this.client.ready || !this.client.capabilities!.completionProvider) return null;
         this.sendChange({
             documentText: context.state.doc.toString(),
         });
 
-        const result = await this.request('textDocument/completion', {
+        const result = await this.client.textDocumentCompletion({
             textDocument: { uri: this.documentUri },
             position: { line, character },
             context: {
                 triggerKind,
                 triggerCharacter,
-            },
-        }, timeout);
+            }
+        });
 
         if (!result) return null;
 
@@ -347,14 +416,6 @@ class LanguageServerPlugin implements PluginValue {
         };
     }
 
-    processRequest({ id }: { id: string }) {
-        this.transport.connection.send(JSON.stringify({
-            jsonrpc: '2.0',
-            id,
-            result: null
-        }));
-    }
-
     processNotification(notification: Notification) {
         try {
             switch (notification.method) {
@@ -367,6 +428,8 @@ class LanguageServerPlugin implements PluginValue {
     }
 
     processDiagnostics(params: PublishDiagnosticsParams) {
+        if (params.uri !== this.documentUri) return;
+
         const diagnostics = params.diagnostics
             .map(({ range, message, severity }) => ({
                 from: posToOffset(this.view.state.doc, range.start)!,
@@ -394,7 +457,15 @@ class LanguageServerPlugin implements PluginValue {
     }
 }
 
+interface LanguageServerClientOptions {
+    serverUri: `ws://${string}` | `wss://${string}`;
+    rootUri: string | null;
+    workspaceFolders: LSP.WorkspaceFolder[] | null;
+    autoClose?: boolean;
+}
+
 interface LanguageServerOptions {
+    client?: LanguageServerClient;
     serverUri: `ws://${string}` | `wss://${string}`;
     rootUri: string | null;
     workspaceFolders: LSP.WorkspaceFolder[] | null;
@@ -406,9 +477,7 @@ export function languageServer(options: LanguageServerOptions) {
     let plugin: LanguageServerPlugin | null = null;
 
     return [
-        serverUri.of(options.serverUri),
-        workspaceFolders.of(options.workspaceFolders),
-        rootUri.of(options.rootUri),
+        client.of(options.client || new LanguageServerClient({...options, autoClose: true})),
         documentUri.of(options.documentUri),
         languageId.of(options.languageId),
         ViewPlugin.define((view) => (plugin = new LanguageServerPlugin(view))),
@@ -431,7 +500,7 @@ export function languageServer(options: LanguageServerOptions) {
                     let trigChar: string | undefined;
                     if (
                         !explicit &&
-                        plugin.capabilities?.completionProvider?.triggerCharacters?.includes(
+                        plugin.client.capabilities?.completionProvider?.triggerCharacters?.includes(
                             line.text[pos - line.from - 1]
                         )
                     ) {

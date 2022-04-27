@@ -16,9 +16,17 @@ npm i codemirror-languageserver
 import { languageServer } from 'codemirror-languageserver';
 
 var ls = languageServer({
-	serverUri: serverUri
-	rootUri: 'file:///'
-	documentUri: `file:///${filename}`
+	// WebSocket server URI and other client options.
+	serverUri: serverUri,
+	rootUri: 'file:///',
+
+	// Alternatively, to share the same client across multiple instances of this plugin.
+	client: new LanguageServerClient({
+		serverUri: serverUri,
+		rootUri: 'file:///'
+	}),
+
+	documentUri: `file:///${filename}`,
 	languageId: 'cpp' // As defined at https://microsoft.github.io/language-server-protocol/specification#textDocumentItem.
 });
 
