@@ -6,7 +6,6 @@ import { EditorView, ViewPlugin } from '@codemirror/view';
 import {
     RequestManager,
     Client,
-    WebSocketTransport,
 } from '@open-rpc/client-js';
 import {
     DiagnosticSeverity,
@@ -24,6 +23,7 @@ import type { ViewUpdate, PluginValue } from '@codemirror/view';
 import type { Text } from '@codemirror/state';
 import type * as LSP from 'vscode-languageserver-protocol';
 import type { Tooltip } from '@codemirror/tooltip';
+import { Transport } from '@open-rpc/client-js/build/transports/Transport';
 
 const timeout = 10000;
 const changesDelay = 500;
@@ -34,6 +34,7 @@ const CompletionItemKindMap = Object.fromEntries(
 
 const useLast = (values: readonly any[]) => values.reduce((_, v) => v, '');
 
+const transport = Facet.define<Transport, Transport>({ combine: useLast });
 const client = Facet.define<LanguageServerClient, LanguageServerClient>({ combine: useLast });
 const documentUri = Facet.define<string, string>({ combine: useLast });
 const languageId = Facet.define<string, string>({ combine: useLast });
@@ -72,12 +73,11 @@ type Notification = {
 }[keyof LSPEventMap];
 
 export class LanguageServerClient {
-    private serverUri: string;
     private rootUri: string;
     private workspaceFolders: LSP.WorkspaceFolder[];
     private autoClose?: boolean;
 
-    private transport: WebSocketTransport;
+    private transport: Transport;
     private requestManager: RequestManager;
     private client: Client;
 
@@ -87,13 +87,12 @@ export class LanguageServerClient {
     private plugins: LanguageServerPlugin[];
 
     constructor(options: LanguageServerClientOptions) {
-        this.serverUri = options.serverUri;
         this.rootUri = options.rootUri;
         this.workspaceFolders = options.workspaceFolders;
         this.autoClose = options.autoClose;
         this.plugins = [];
-
-        this.transport = new WebSocketTransport(this.serverUri);
+        this.transport =  options.transport;
+        
         this.requestManager = new RequestManager([this.transport]);
         this.client = new Client(this.requestManager);
 
@@ -101,11 +100,6 @@ export class LanguageServerClient {
             this.processNotification(data as any);
         });
 
-        this.transport.connection.addEventListener('message', (message) => {
-            const data = JSON.parse(message.data);
-            if (data.method && data.id)
-                this.processRequest(data);
-        });
         this.initialize();
     }
 
@@ -221,11 +215,11 @@ export class LanguageServerClient {
     }
 
     private processRequest({ id }: { id: string }) {
-        this.transport.connection.send(JSON.stringify({
+        this.transport.sendData({
             jsonrpc: '2.0',
             id,
             result: null
-        }));
+        } as any);
     }
 
     private processNotification(notification: Notification) {
@@ -458,7 +452,7 @@ class LanguageServerPlugin implements PluginValue {
 }
 
 interface LanguageServerClientOptions {
-    serverUri: `ws://${string}` | `wss://${string}`;
+    transport: Transport,
     rootUri: string | null;
     workspaceFolders: LSP.WorkspaceFolder[] | null;
     autoClose?: boolean;
@@ -466,7 +460,7 @@ interface LanguageServerClientOptions {
 
 interface LanguageServerOptions {
     client?: LanguageServerClient;
-    serverUri: `ws://${string}` | `wss://${string}`;
+    transport: Transport,
     rootUri: string | null;
     workspaceFolders: LSP.WorkspaceFolder[] | null;
     documentUri: string;
