@@ -214,14 +214,6 @@ export class LanguageServerClient {
         return this.client.notify({ method, params });
     }
 
-    private processRequest({ id }: { id: string }) {
-        this.transport.sendData({
-            jsonrpc: '2.0',
-            id,
-            result: null
-        } as any);
-    }
-
     private processNotification(notification: Notification) {
         for (const plugin of this.plugins)
             plugin.processNotification(notification);
