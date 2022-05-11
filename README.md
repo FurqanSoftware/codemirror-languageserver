@@ -13,20 +13,18 @@ npm i codemirror-languageserver
 ```
 
 ``` js
-import { WebSocketTransport } from "@open-rpc/client-js";
 import { languageServer } from 'codemirror-languageserver';
 
-// WebSocket transport
 const transport = new WebSocketTransport(serverUri)
 
 var ls = languageServer({
-	// Transport and other client options.
-	transport,
+	// WebSocket server uri and other client options.
+	serverUri,
 	rootUri: 'file:///',
 
 	// Alternatively, to share the same client across multiple instances of this plugin.
 	client: new LanguageServerClient({
-		transport,
+		serverUri,
 		rootUri: 'file:///'
 	}),
 
