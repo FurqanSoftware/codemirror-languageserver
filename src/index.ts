@@ -1,11 +1,11 @@
 import { autocompletion } from '@codemirror/autocomplete';
 import { setDiagnostics } from '@codemirror/lint';
 import { Facet } from '@codemirror/state';
-import { hoverTooltip } from '@codemirror/tooltip';
-import { EditorView, ViewPlugin } from '@codemirror/view';
+import { EditorView, ViewPlugin, Tooltip, hoverTooltip } from '@codemirror/view';
 import {
     RequestManager,
     Client,
+    WebSocketTransport,
 } from '@open-rpc/client-js';
 import {
     DiagnosticSeverity,
@@ -22,7 +22,6 @@ import type { PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 import type { ViewUpdate, PluginValue } from '@codemirror/view';
 import type { Text } from '@codemirror/state';
 import type * as LSP from 'vscode-languageserver-protocol';
-import type { Tooltip } from '@codemirror/tooltip';
 import { Transport } from '@open-rpc/client-js/build/transports/Transport';
 
 const timeout = 10000;
@@ -34,7 +33,6 @@ const CompletionItemKindMap = Object.fromEntries(
 
 const useLast = (values: readonly any[]) => values.reduce((_, v) => v, '');
 
-const transport = Facet.define<Transport, Transport>({ combine: useLast });
 const client = Facet.define<LanguageServerClient, LanguageServerClient>({ combine: useLast });
 const documentUri = Facet.define<string, string>({ combine: useLast });
 const languageId = Facet.define<string, string>({ combine: useLast });
@@ -443,23 +441,36 @@ class LanguageServerPlugin implements PluginValue {
     }
 }
 
-interface LanguageServerClientOptions {
-    transport: Transport,
-    rootUri: string | null;
-    workspaceFolders: LSP.WorkspaceFolder[] | null;
-    autoClose?: boolean;
-}
-
-interface LanguageServerOptions {
-    client?: LanguageServerClient;
-    transport: Transport,
+interface LanguageServerBaseOptions {
     rootUri: string | null;
     workspaceFolders: LSP.WorkspaceFolder[] | null;
     documentUri: string;
     languageId: string;
 }
 
-export function languageServer(options: LanguageServerOptions) {
+interface LanguageServerClientOptions extends LanguageServerBaseOptions {
+    transport: Transport,
+    autoClose?: boolean;
+}
+
+interface LanguageServerOptions extends LanguageServerClientOptions {
+    client?: LanguageServerClient;
+}
+
+interface LanguageServerWebsocketOptions extends LanguageServerBaseOptions {
+    serverUri: `ws://${string}` | `wss://${string}`;
+}
+
+export function languageServer(options: LanguageServerWebsocketOptions){
+    const serverUri = options.serverUri;
+    delete options.serverUri;
+    return languageServerWithTransport({
+        ...options,
+        transport: new WebSocketTransport(serverUri)
+    })
+}
+
+export function languageServerWithTransport(options: LanguageServerOptions) {
     let plugin: LanguageServerPlugin | null = null;
 
     return [
