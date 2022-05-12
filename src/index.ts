@@ -1,8 +1,7 @@
 import { autocompletion } from '@codemirror/autocomplete';
 import { setDiagnostics } from '@codemirror/lint';
 import { Facet } from '@codemirror/state';
-import { hoverTooltip } from '@codemirror/tooltip';
-import { EditorView, ViewPlugin } from '@codemirror/view';
+import { EditorView, ViewPlugin, Tooltip, hoverTooltip } from '@codemirror/view';
 import {
     RequestManager,
     Client,
@@ -23,7 +22,7 @@ import type { PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 import type { ViewUpdate, PluginValue } from '@codemirror/view';
 import type { Text } from '@codemirror/state';
 import type * as LSP from 'vscode-languageserver-protocol';
-import type { Tooltip } from '@codemirror/tooltip';
+import { Transport } from '@open-rpc/client-js/build/transports/Transport';
 
 const timeout = 10000;
 const changesDelay = 500;
@@ -72,12 +71,11 @@ type Notification = {
 }[keyof LSPEventMap];
 
 export class LanguageServerClient {
-    private serverUri: string;
     private rootUri: string;
     private workspaceFolders: LSP.WorkspaceFolder[];
     private autoClose?: boolean;
 
-    private transport: WebSocketTransport;
+    private transport: Transport;
     private requestManager: RequestManager;
     private client: Client;
 
@@ -87,13 +85,12 @@ export class LanguageServerClient {
     private plugins: LanguageServerPlugin[];
 
     constructor(options: LanguageServerClientOptions) {
-        this.serverUri = options.serverUri;
         this.rootUri = options.rootUri;
         this.workspaceFolders = options.workspaceFolders;
         this.autoClose = options.autoClose;
         this.plugins = [];
-
-        this.transport = new WebSocketTransport(this.serverUri);
+        this.transport =  options.transport;
+        
         this.requestManager = new RequestManager([this.transport]);
         this.client = new Client(this.requestManager);
 
@@ -101,11 +98,6 @@ export class LanguageServerClient {
             this.processNotification(data as any);
         });
 
-        this.transport.connection.addEventListener('message', (message) => {
-            const data = JSON.parse(message.data);
-            if (data.method && data.id)
-                this.processRequest(data);
-        });
         this.initialize();
     }
 
@@ -218,14 +210,6 @@ export class LanguageServerClient {
         params: LSPNotifyMap[K]
     ): Promise<LSPNotifyMap[K]> {
         return this.client.notify({ method, params });
-    }
-
-    private processRequest({ id }: { id: string }) {
-        this.transport.connection.send(JSON.stringify({
-            jsonrpc: '2.0',
-            id,
-            result: null
-        }));
     }
 
     private processNotification(notification: Notification) {
@@ -457,23 +441,36 @@ class LanguageServerPlugin implements PluginValue {
     }
 }
 
-interface LanguageServerClientOptions {
-    serverUri: `ws://${string}` | `wss://${string}`;
-    rootUri: string | null;
-    workspaceFolders: LSP.WorkspaceFolder[] | null;
-    autoClose?: boolean;
-}
-
-interface LanguageServerOptions {
-    client?: LanguageServerClient;
-    serverUri: `ws://${string}` | `wss://${string}`;
+interface LanguageServerBaseOptions {
     rootUri: string | null;
     workspaceFolders: LSP.WorkspaceFolder[] | null;
     documentUri: string;
     languageId: string;
 }
 
-export function languageServer(options: LanguageServerOptions) {
+interface LanguageServerClientOptions extends LanguageServerBaseOptions {
+    transport: Transport,
+    autoClose?: boolean;
+}
+
+interface LanguageServerOptions extends LanguageServerClientOptions {
+    client?: LanguageServerClient;
+}
+
+interface LanguageServerWebsocketOptions extends LanguageServerBaseOptions {
+    serverUri: `ws://${string}` | `wss://${string}`;
+}
+
+export function languageServer(options: LanguageServerWebsocketOptions){
+    const serverUri = options.serverUri;
+    delete options.serverUri;
+    return languageServerWithTransport({
+        ...options,
+        transport: new WebSocketTransport(serverUri)
+    })
+}
+
+export function languageServerWithTransport(options: LanguageServerOptions) {
     let plugin: LanguageServerPlugin | null = null;
 
     return [
