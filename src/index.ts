@@ -456,40 +456,43 @@ class LanguageServerPlugin implements PluginValue {
     }
 }
 
-interface LanguageServerBaseOptions {
-    rootUri: string | null;
-    workspaceFolders: LSP.WorkspaceFolder[] | null;
-    documentUri: string;
-    languageId: string;
+type ServerUri = `ws://${string}` | `wss://${string}`;
+interface LanguageServerOptions {
+    rootUri?: string;
+    workspaceFolders?: LSP.WorkspaceFolder[];
 }
-
-interface LanguageServerClientOptions extends LanguageServerBaseOptions {
-    transport: Transport,
+interface LanguageServerClientOptions extends LanguageServerOptions {
+    transport?: Transport;
     autoClose?: boolean;
 }
-
-interface LanguageServerOptions extends LanguageServerClientOptions {
-    client?: LanguageServerClient;
+interface LanguageServerWithClientOptions {
+    documentUri: string;
+    client: LanguageServerClient;
+    languageId: string;
 }
-
-interface LanguageServerWebsocketOptions extends LanguageServerBaseOptions {
-    serverUri: `ws://${string}` | `wss://${string}`;
+interface LanguageServerWebsocketOptions extends LanguageServerOptions {
+    documentUri: string;
+    serverUri: ServerUri;
+    languageId: string;
 }
 
 export function languageServer(options: LanguageServerWebsocketOptions){
     const serverUri = options.serverUri;
     delete options.serverUri;
-    return languageServerWithTransport({
+    return languageServerWithClient({
         ...options,
-        transport: new WebSocketTransport(serverUri)
+        client: new LanguageServerClient({
+            ...options,
+            transport: new WebSocketTransport(serverUri)
+        })
     })
 }
 
-export function languageServerWithTransport(options: LanguageServerOptions) {
+export function languageServerWithClient(options: LanguageServerWithClientOptions) {
     let plugin: LanguageServerPlugin | null = null;
 
     return [
-        client.of(options.client || new LanguageServerClient({...options, autoClose: true})),
+        client.of(options.client),
         documentUri.of(options.documentUri),
         languageId.of(options.languageId),
         ViewPlugin.define((view) => (plugin = new LanguageServerPlugin(view))),
