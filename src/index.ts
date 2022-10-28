@@ -84,6 +84,8 @@ export class LanguageServerClient {
 
     private plugins: LanguageServerPlugin[];
 
+    public initializePromise: Promise<void>;
+
     constructor(options: LanguageServerClientOptions) {
         this.rootUri = options.rootUri;
         this.workspaceFolders = options.workspaceFolders;
@@ -113,7 +115,8 @@ export class LanguageServerClient {
                 }
             });
         }
-        this.initialize();
+        
+        this.initializePromise = this.initialize();
     }
 
     async initialize() {
@@ -271,6 +274,9 @@ class LanguageServerPlugin implements PluginValue {
     }
 
     async initialize({ documentText }: { documentText: string }) {
+         if (this.client.initializePromise) {
+            await this.client.initializePromise;
+        }
         this.client.textDocumentDidOpen({
             textDocument: {
                 uri: this.documentUri,
