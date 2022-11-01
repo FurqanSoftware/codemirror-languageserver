@@ -2,7 +2,7 @@
 
 [![npm version](https://badge.fury.io/js/codemirror-languageserver.svg)](https://www.npmjs.com/package/codemirror-languageserver)
 
-This plugin enables code completion, hover tooltips, and linter functionality by connecting a CodeMirror 6 editor with a language server over WebSocket.
+This plugin enables code completion, hover tooltips, and linter functionality by connecting a CodeMirror 6 editor with a language server over WebSocket or any compatible transport.
 
 [How It Works](https://hjr265.me/blog/codemirror-lsp/)
 
@@ -12,35 +12,91 @@ This plugin enables code completion, hover tooltips, and linter functionality by
 npm i codemirror-languageserver
 ```
 
+### WebSockets transport
 ``` js
 import { languageServer } from 'codemirror-languageserver';
 
-const transport = new WebSocketTransport(serverUri)
-
-var ls = languageServer({
-	// WebSocket server uri and other client options.
-	serverUri,
+const lsPlugin = languageServer({
+	serverUri, // WebSocket server uri.
 	rootUri: 'file:///',
-
-	// Alternatively, to share the same client across multiple instances of this plugin.
-	client: new LanguageServerClient({
-		serverUri,
-		rootUri: 'file:///'
-	}),
-
 	documentUri: `file:///${filename}`,
 	languageId: 'cpp' // As defined at https://microsoft.github.io/language-server-protocol/specification#textDocumentItem.
 });
 
-var view = new EditorView({
+const view = new EditorView({
 	state: EditorState.create({
 		extensions: [
 			// ...
-			ls,
+			lsPlugin,
 			// ...
 		]
 	})
 });
+```
+
+### Re using the same client
+``` js
+import { languageServer } from 'codemirror-languageserver';
+
+const client = new LanguageServerClient({
+	transport: new WebSocketTransport(serverUri),
+	rootUri: 'file:///'
+})
+
+const firstView = new EditorView({
+	state: EditorState.create({
+		extensions: [
+			// ...
+			languageServerWithClient({
+				client,
+				documentUri: `file:///${secondFileName}`,
+				languageId: 'cpp'
+			}),
+			// ...
+		]
+	})
+});
+
+const secondView = new EditorView({
+	state: EditorState.create({
+		extensions: [
+			// ...
+			languageServerWithClient({
+				client,
+				documentUri: `file:///${firstFileName}`,
+				languageId: 'cpp'
+			}),
+			// ...
+		]
+	})
+});
+```
+
+### Custom transport
+``` js
+import { languageServer } from 'codemirror-languageserver';
+
+const client = new LanguageServerClient({
+	transport: new AwesomeCustomTransport(),
+	rootUri: 'file:///'
+})
+
+const lsPlugin = languageServerWithClient({
+	client,
+	documentUri: `file:///${filename}`,
+	languageId: 'cpp'
+})
+
+const view = new EditorView({
+	state: EditorState.create({
+		extensions: [
+			// ...
+			lsPlugin,
+			// ...
+		]
+	})
+});
+
 ```
 
 ## Contributing
