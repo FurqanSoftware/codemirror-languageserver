@@ -245,7 +245,7 @@ class LanguageServerPlugin implements PluginValue {
     
     private changesTimeout: number;
 
-    constructor(private view: EditorView) {
+    constructor(private view: EditorView, private allowHTMLContent: boolean) {
         this.client = this.view.state.facet(client);
         this.documentUri = this.view.state.facet(documentUri);
         this.languageId = this.view.state.facet(languageId);
@@ -328,7 +328,8 @@ class LanguageServerPlugin implements PluginValue {
         if (pos === null) return null;
         const dom = document.createElement('div');
         dom.classList.add('documentation');
-        dom.textContent = formatContents(contents);
+        if (this.allowHTMLContent) dom.innerHTML = formatContents(contents);
+        else dom.textContent = formatContents(contents);
         return { pos, end, create: (view) => ({ dom }), above: true };
     }
 
@@ -476,6 +477,7 @@ interface LanguageServerClientOptions extends LanguageServerBaseOptions {
 
 interface LanguageServerOptions extends LanguageServerClientOptions {
     client?: LanguageServerClient;
+    allowHTMLContent?: boolean;
 }
 
 interface LanguageServerWebsocketOptions extends LanguageServerBaseOptions {
@@ -498,7 +500,7 @@ export function languageServerWithTransport(options: LanguageServerOptions) {
         client.of(options.client || new LanguageServerClient({...options, autoClose: true})),
         documentUri.of(options.documentUri),
         languageId.of(options.languageId),
-        ViewPlugin.define((view) => (plugin = new LanguageServerPlugin(view))),
+        ViewPlugin.define((view) => (plugin = new LanguageServerPlugin(view, options.allowHTMLContent))),
         hoverTooltip(
             (view, pos) =>
                 plugin?.requestHoverTooltip(
