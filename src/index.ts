@@ -544,7 +544,6 @@ export function languageServerWithTransport(options: LanguageServerOptions) {
                 },
             ],
         }),
-        baseTheme,
     ];
 }
 
@@ -601,16 +600,3 @@ function prefixMatch(options: Completion[]) {
     const source = toSet(first) + toSet(rest) + '*$';
     return [new RegExp('^' + source), new RegExp(source)];
 }
-
-const baseTheme = EditorView.baseTheme({
-    '.cm-tooltip.documentation': {
-        display: 'block',
-        marginLeft: '0',
-        padding: '3px 6px 3px 8px',
-        borderLeft: '5px solid #999',
-        whiteSpace: 'pre',
-    },
-    '.cm-tooltip.lint': {
-        whiteSpace: 'pre',
-    },
-});
