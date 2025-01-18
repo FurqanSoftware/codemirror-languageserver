@@ -1,4 +1,4 @@
-import { autocompletion } from '@codemirror/autocomplete';
+import { autocompletion, insertCompletionText } from '@codemirror/autocomplete';
 import { setDiagnostics } from '@codemirror/lint';
 import { Facet } from '@codemirror/state';
 import { EditorView, ViewPlugin, Tooltip, hoverTooltip } from '@codemirror/view';
@@ -360,9 +360,38 @@ class LanguageServerPlugin implements PluginValue {
 
         if (!result) return null;
 
-        const items = 'items' in result ? result.items : result;
+        let items = 'items' in result ? result.items : result;
 
-        let options = items.map(
+        const [span, match] = prefixMatch(items);
+        const token = context.matchBefore(match);
+        let { pos } = context;
+
+        if (token) {
+            pos = token.from;
+            const word = token.text.toLowerCase();
+            if (/^\w+$/.test(word)) {
+                items = items
+                    .filter(({ label, filterText }) => {
+                        const text = filterText ?? label
+                        return text.toLowerCase().startsWith(word)
+                    })
+                    .sort((a, b) => {
+                        const aText = a.textEdit?.newText ?? a.label
+                        const bText = b.textEdit?.newText ?? b.label
+                        switch (true) {
+                            case aText.startsWith(token.text) &&
+                                !bText.startsWith(token.text):
+                                return -1;
+                            case !aText.startsWith(token.text) &&
+                                bText.startsWith(token.text):
+                                return 1;
+                        }
+                        return 0;
+                    });
+            }
+        }
+
+        const options = items.map(
             ({
                 detail,
                 label,
@@ -371,15 +400,39 @@ class LanguageServerPlugin implements PluginValue {
                 documentation,
                 sortText,
                 filterText,
+                additionalTextEdits,
             }) => {
                 const completion: Completion & {
                     filterText: string;
                     sortText?: string;
-                    apply: string;
                 } = {
                     label,
                     detail,
-                    apply: textEdit?.newText ?? label,
+                    apply: function(view: EditorView, completion: Completion, from: number, to: number) {
+                        const text = textEdit?.newText ?? label;
+                        view.dispatch(insertCompletionText(view.state, text, from, to));
+                        if (!additionalTextEdits) {
+                            return
+                        }
+                        additionalTextEdits
+                            .sort(({ range: { end: a } }, { range: { end: b } }) => {
+                                if (posToOffset(view.state.doc, a) < posToOffset(view.state.doc, b)) {
+                                    return 1;
+                                } else if (posToOffset(view.state.doc, a) > posToOffset(view.state.doc, b)) {
+                                    return -1;
+                                }
+                                return 0;
+                            })
+                            .forEach((textEdit) => {
+                                view.dispatch(view.state.update({
+                                    changes: {
+                                        from: posToOffset(view.state.doc, textEdit.range.start),
+                                        to: posToOffset(view.state.doc, textEdit.range.end),
+                                        insert: textEdit.newText
+                                    }
+                                }));
+                            });
+                    },
                     type: kind && CompletionItemKindMap[kind].toLowerCase(),
                     sortText: sortText ?? label,
                     filterText: filterText ?? label,
@@ -391,31 +444,7 @@ class LanguageServerPlugin implements PluginValue {
             }
         );
 
-        const [span, match] = prefixMatch(options);
-        const token = context.matchBefore(match);
-        let { pos } = context;
-
-        if (token) {
-            pos = token.from;
-            const word = token.text.toLowerCase();
-            if (/^\w+$/.test(word)) {
-                options = options
-                    .filter(({ filterText }) =>
-                        filterText.toLowerCase().startsWith(word)
-                    )
-                    .sort(({ apply: a }, { apply: b }) => {
-                        switch (true) {
-                            case a.startsWith(token.text) &&
-                                !b.startsWith(token.text):
-                                return -1;
-                            case !a.startsWith(token.text) &&
-                                b.startsWith(token.text):
-                                return 1;
-                        }
-                        return 0;
-                    });
-            }
-        }
+        console.log(options)
         return {
             from: pos,
             options,
@@ -585,12 +614,12 @@ function toSet(chars: Set<string>) {
     return `[${preamble}${flat.replace(/[^\w\s]/g, '\\$&')}]`;
 }
 
-function prefixMatch(options: Completion[]) {
+function prefixMatch(items: LSP.CompletionItem[]) {
     const first = new Set<string>();
     const rest = new Set<string>();
 
-    for (const { apply } of options) {
-        const [initial, ...restStr] = apply as string;
+    for (const item of items) {
+        const [initial, ...restStr] = item.textEdit?.newText || item.label;
         first.add(initial);
         for (const char of restStr) {
             rest.add(char);
