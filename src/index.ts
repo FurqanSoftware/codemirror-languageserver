@@ -400,11 +400,14 @@ class LanguageServerPlugin implements PluginValue {
                 documentation,
                 additionalTextEdits,
             }) => {
+                textEdit = textEdit as LSP.TextEdit
                 const completion: Completion = {
                     label,
                     detail,
                     apply: function(view: EditorView, completion: Completion, from: number, to: number) {
                         const text = textEdit?.newText ?? label;
+                        from = textEdit?.range ? posToOffset(view.state.doc, textEdit?.range.start) : from
+                        to = textEdit?.range ? posToOffset(view.state.doc, textEdit?.range.end) : to
                         view.dispatch(insertCompletionText(view.state, text, from, to));
                         if (!additionalTextEdits) {
                             return
