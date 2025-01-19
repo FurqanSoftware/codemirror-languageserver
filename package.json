@@ -1,6 +1,6 @@
 {
   "name": "codemirror-languageserver",
-  "version": "1.12.0",
+  "version": "1.12.1",
   "description": "Language Server Plugin for CodeMirror 6",
   "main": "dist/index.js",
   "scripts": {
