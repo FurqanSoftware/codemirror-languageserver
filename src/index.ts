@@ -447,6 +447,7 @@ class LanguageServerPlugin implements PluginValue {
         return {
             from: pos,
             options,
+            filter: false
         };
     }
 
