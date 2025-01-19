@@ -398,14 +398,9 @@ class LanguageServerPlugin implements PluginValue {
                 kind,
                 textEdit,
                 documentation,
-                sortText,
-                filterText,
                 additionalTextEdits,
             }) => {
-                const completion: Completion & {
-                    filterText: string;
-                    sortText?: string;
-                } = {
+                const completion: Completion = {
                     label,
                     detail,
                     apply: function(view: EditorView, completion: Completion, from: number, to: number) {
@@ -433,9 +428,7 @@ class LanguageServerPlugin implements PluginValue {
                                 }));
                             });
                     },
-                    type: kind && CompletionItemKindMap[kind].toLowerCase(),
-                    sortText: sortText ?? label,
-                    filterText: filterText ?? label,
+                    type: kind && CompletionItemKindMap[kind].toLowerCase()
                 };
                 if (documentation) {
                     completion.info = formatContents(documentation);
