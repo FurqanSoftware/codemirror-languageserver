@@ -444,7 +444,6 @@ class LanguageServerPlugin implements PluginValue {
             }
         );
 
-        console.log(options)
         return {
             from: pos,
             options,
