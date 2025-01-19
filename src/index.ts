@@ -23,6 +23,7 @@ import type { ViewUpdate, PluginValue } from '@codemirror/view';
 import type { Text } from '@codemirror/state';
 import type * as LSP from 'vscode-languageserver-protocol';
 import { Transport } from '@open-rpc/client-js/build/transports/Transport';
+import { marked } from 'marked/lib/marked.esm.js';
 
 const timeout = 10000;
 const changesDelay = 500;
@@ -590,12 +591,16 @@ function offsetToPos(doc: Text, offset: number) {
 function formatContents(
     contents: LSP.MarkupContent | LSP.MarkedString | LSP.MarkedString[]
 ): string {
-    if (Array.isArray(contents)) {
+    if (isLSPMarkupContent(contents)) {
+        let value = contents.value;
+        if (contents.kind == 'markdown') {
+            value = marked.parse(value);
+        }
+        return value;
+    } else if (Array.isArray(contents)) {
         return contents.map((c) => formatContents(c) + '\n\n').join('');
     } else if (typeof contents === 'string') {
         return contents;
-    } else {
-        return contents.value;
     }
 }
 
@@ -628,4 +633,8 @@ function prefixMatch(items: LSP.CompletionItem[]) {
 
 function isLSPTextEdit(textEdit?: LSP.TextEdit | LSP.InsertReplaceEdit): textEdit is LSP.TextEdit {
     return (textEdit as LSP.TextEdit)?.range !== undefined;
+}
+
+function isLSPMarkupContent(contents: LSP.MarkupContent | LSP.MarkedString | LSP.MarkedString[]): contents is LSP.MarkupContent {
+    return (contents as LSP.MarkupContent).kind !== undefined;
 }
