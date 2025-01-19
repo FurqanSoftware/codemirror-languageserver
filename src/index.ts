@@ -376,8 +376,8 @@ class LanguageServerPlugin implements PluginValue {
                         return text.toLowerCase().startsWith(word)
                     })
                     .sort((a, b) => {
-                        const aText = a.textEdit?.newText ?? a.label
-                        const bText = b.textEdit?.newText ?? b.label
+                        const aText = a.sortText ?? a.label
+                        const bText = b.sortText ?? b.label
                         switch (true) {
                             case aText.startsWith(token.text) &&
                                 !bText.startsWith(token.text):
