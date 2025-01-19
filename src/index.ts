@@ -400,15 +400,15 @@ class LanguageServerPlugin implements PluginValue {
                 documentation,
                 additionalTextEdits,
             }) => {
-                textEdit = textEdit as LSP.TextEdit
                 const completion: Completion = {
                     label,
                     detail,
                     apply: function(view: EditorView, completion: Completion, from: number, to: number) {
-                        const text = textEdit?.newText ?? label;
-                        from = textEdit?.range ? posToOffset(view.state.doc, textEdit?.range.start) : from
-                        to = textEdit?.range ? posToOffset(view.state.doc, textEdit?.range.end) : to
-                        view.dispatch(insertCompletionText(view.state, text, from, to));
+                        if (isLSPTextEdit(textEdit)) {
+                            view.dispatch(insertCompletionText(view.state, textEdit.newText, posToOffset(view.state.doc, textEdit.range.start), posToOffset(view.state.doc, textEdit.range.end)));
+                        } else {
+                            view.dispatch(insertCompletionText(view.state, label, from, to));
+                        }
                         if (!additionalTextEdits) {
                             return
                         }
@@ -624,4 +624,8 @@ function prefixMatch(items: LSP.CompletionItem[]) {
 
     const source = toSet(first) + toSet(rest) + '*$';
     return [new RegExp('^' + source), new RegExp(source)];
+}
+
+function isLSPTextEdit(textEdit?: LSP.TextEdit | LSP.InsertReplaceEdit): textEdit is LSP.TextEdit {
+    return (textEdit as LSP.TextEdit)?.range !== undefined;
 }
