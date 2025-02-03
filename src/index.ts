@@ -239,7 +239,7 @@ export class LanguageServerClient {
         return this.client.notify({ method, params });
     }
 
-    private processNotification(notification: Notification) {
+    protected processNotification(notification: Notification) {
         for (const plugin of this.plugins) {
             plugin.processNotification(notification);
         }
