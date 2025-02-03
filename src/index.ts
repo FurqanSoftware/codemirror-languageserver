@@ -120,8 +120,8 @@ export class LanguageServerClient {
         this.initializePromise = this.initialize();
     }
 
-    public async initialize() {
-        const { capabilities } = await this.request("initialize", {
+    protected getInitializationOptions(): LSP.InitializeParams["initializationOptions"] {
+        return {
             capabilities: {
                 textDocument: {
                     hover: {
@@ -179,7 +179,15 @@ export class LanguageServerClient {
             processId: null,
             rootUri: this.rootUri,
             workspaceFolders: this.workspaceFolders,
-        }, timeout * 3);
+        }
+    }
+
+    public async initialize() {
+        const { capabilities } = await this.request(
+            "initialize",
+            this.getInitializationOptions(),
+            timeout * 3,
+        );
         this.capabilities = capabilities;
         this.notify("initialized", {});
         this.ready = true;
@@ -216,7 +224,7 @@ export class LanguageServerClient {
         if (this.autoClose) { this.close(); }
     }
 
-    private request<K extends keyof LSPRequestMap>(
+    protected request<K extends keyof LSPRequestMap>(
         method: K,
         params: LSPRequestMap[K][0],
         timeout: number,
@@ -224,7 +232,7 @@ export class LanguageServerClient {
         return this.client.request({ method, params }, timeout);
     }
 
-    private notify<K extends keyof LSPNotifyMap>(
+    protected notify<K extends keyof LSPNotifyMap>(
         method: K,
         params: LSPNotifyMap[K],
     ): Promise<LSPNotifyMap[K]> {
