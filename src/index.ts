@@ -331,9 +331,9 @@ class LanguageServerPlugin implements PluginValue {
         const dom = document.createElement("div");
         dom.classList.add("documentation");
         if (this.allowHTMLContent) {
-            dom.innerHTML = formatContents(contents);
+            dom.innerHTML = await formatContents(contents);
         } else {
-            dom.textContent = formatContents(contents);
+            dom.textContent = await formatContents(contents);
         }
         return {
             pos,
@@ -451,7 +451,16 @@ class LanguageServerPlugin implements PluginValue {
                     type: kind && CompletionItemKindMap[kind].toLowerCase(),
                 };
                 if (documentation) {
-                    completion.info = formatContents(documentation);
+                    completion.info = async () => {
+                      const dom = document.createElement("div");
+                      dom.classList.add("documentation");
+                      if (this.allowHTMLContent) {
+                          dom.innerHTML = await formatContents(documentation);
+                      } else {
+                          dom.textContent = await formatContents(documentation);
+                      }
+                      return dom
+                    }
                 }
                 return completion;
             },
@@ -604,13 +613,13 @@ function offsetToPos(doc: Text, offset: number) {
     };
 }
 
-function formatContents(
+async function formatContents(
     contents: LSP.MarkupContent | LSP.MarkedString | LSP.MarkedString[],
-): string {
+): Promise<string> {
     if (isLSPMarkupContent(contents)) {
         let value = contents.value;
         if (contents.kind === "markdown") {
-            value = marked.parse(value);
+            value = await marked.parse(value);
         }
         return value;
     } else if (Array.isArray(contents)) {
