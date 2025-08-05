@@ -638,6 +638,7 @@ export class LanguageServerPlugin implements PluginValue {
                         anchor: posToOffset(view.state.doc, range.start),
                         head: posToOffset(view.state.doc, range.end),
                     },
+                    scrollIntoView: true,
                 }),
             );
         }
