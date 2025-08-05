@@ -84,7 +84,6 @@ const view = new EditorView({
             documentUri: `file:///demo/main.cpp`,
             languageId: 'cpp',
         }),
-        keymap.of([...jumpToDefinitionKeymap]),
         EditorView.domEventHandlers({
             click: (event, view) => {
                 if (!event.ctrlKey && !event.metaKey) return;

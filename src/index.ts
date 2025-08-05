@@ -65,5 +65,6 @@ export function languageServerWithTransport<InitializationOptions = unknown>(
         }),
         hoverTooltip(),
         autocompletion(),
+        keymap.of([...jumpToDefinitionKeymap]),
     ];
 }
