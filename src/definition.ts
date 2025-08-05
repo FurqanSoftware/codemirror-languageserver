@@ -9,6 +9,13 @@ function requestDefinition(view: EditorView, pos: number): boolean {
     return true;
 }
 
+function requestDeclaration(view: EditorView, pos: number): boolean {
+    const plugin = view.plugin(languageServerPlugin);
+    if (!plugin) return false;
+    plugin.requestDeclaration(view, offsetToPos(view.state.doc, pos));
+    return true;
+}
+
 function requestTypeDefinition(view: EditorView, pos: number): boolean {
     const plugin = view.plugin(languageServerPlugin);
     if (!plugin) return false;
@@ -23,6 +30,14 @@ export const jumpToDefinitionPos =
     (pos: number): Command =>
     (view: EditorView): boolean =>
         requestDefinition(view, pos);
+
+export const jumpToDeclaration: Command = (view: EditorView): boolean =>
+    requestDeclaration(view, view.state.selection.main.head);
+
+export const jumpToDeclarationPos =
+    (pos: number): Command =>
+    (view: EditorView): boolean =>
+        requestDeclaration(view, pos);
 
 export const jumpToTypeDefinition: Command = (view: EditorView): boolean =>
     requestTypeDefinition(view, view.state.selection.main.head);

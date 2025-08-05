@@ -56,6 +56,10 @@ interface LSPRequestMap {
         LSP.DefinitionParams,
         LSP.Location | LSP.Location[] | LSP.LocationLink[] | null,
     ];
+    'textDocument/declaration': [
+        LSP.DeclarationParams,
+        LSP.Location | LSP.Location[] | LSP.LocationLink[] | null,
+    ];
     'textDocument/typeDefinition': [
         LSP.TypeDefinitionParams,
         LSP.Location | LSP.Location[] | LSP.LocationLink[] | null,
@@ -82,6 +86,18 @@ type Notification = {
         params: LSPEventMap[key];
     };
 }[keyof LSPEventMap];
+
+interface LanguageServerClientLocationMethods {
+    textDocumentDefinition(
+        params: LSP.DefinitionParams,
+    ): LSP.Location | LSP.Location[] | LSP.LocationLink[] | null;
+    textDocumentDeclaration(
+        params: LSP.DeclarationParams,
+    ): LSP.Location | LSP.Location[] | LSP.LocationLink[] | null;
+    textDocumentTypeDefinition(
+        params: LSP.TypeDefinitionParams,
+    ): LSP.Location | LSP.Location[] | LSP.LocationLink[] | null;
+}
 
 export class LanguageServerClient<InitializationOptions = unknown> {
     public ready: boolean;
@@ -233,6 +249,10 @@ export class LanguageServerClient<InitializationOptions = unknown> {
 
     public async textDocumentDefinition(params: LSP.DefinitionParams) {
         return await this.request('textDocument/definition', params, timeout);
+    }
+
+    public async textDocumentDeclaration(params: LSP.DeclarationParams) {
+        return await this.request('textDocument/declaration', params, timeout);
     }
 
     public async textDocumentTypeDefinition(params: LSP.TypeDefinitionParams) {
@@ -586,18 +606,17 @@ export class LanguageServerPlugin implements PluginValue {
         };
     }
 
-    public async requestDefinition(
+    public async requestLocation(
         view: EditorView,
         { line, character }: { line: number; character: number },
+        capability: keyof LSP.ServerCapabilities<any>,
+        method: keyof LanguageServerClientLocationMethods,
     ) {
-        if (
-            !this.client.ready ||
-            !this.client.capabilities!.definitionProvider
-        ) {
+        if (!this.client.ready || !this.client.capabilities![capability]) {
             return null;
         }
 
-        const result = await this.client.textDocumentDefinition({
+        const result = await this.client[method]({
             textDocument: { uri: this.documentUri },
             position: { line, character },
         });
@@ -629,47 +648,40 @@ export class LanguageServerPlugin implements PluginValue {
         };
     }
 
+    public async requestDefinition(
+        view: EditorView,
+        { line, character }: { line: number; character: number },
+    ) {
+        return this.requestLocation(
+            view,
+            { line, character },
+            'definitionProvider',
+            'textDocumentDefinition',
+        );
+    }
+
+    public async requestDeclaration(
+        view: EditorView,
+        { line, character }: { line: number; character: number },
+    ) {
+        return this.requestLocation(
+            view,
+            { line, character },
+            'declarationProvider',
+            'textDocumentDeclaration',
+        );
+    }
+
     public async requestTypeDefinition(
         view: EditorView,
         { line, character }: { line: number; character: number },
     ) {
-        if (
-            !this.client.ready ||
-            !this.client.capabilities!.typeDefinitionProvider
-        ) {
-            return null;
-        }
-
-        const result = await this.client.textDocumentTypeDefinition({
-            textDocument: { uri: this.documentUri },
-            position: { line, character },
-        });
-
-        if (!result) return;
-
-        const location = Array.isArray(result) ? result[0] : result;
-        const uri =
-            (location as LSP.Location).uri ||
-            (location as LSP.LocationLink).targetUri;
-        const range =
-            (location as LSP.Location).range ||
-            (location as LSP.LocationLink).targetRange;
-
-        if (uri === this.documentUri) {
-            view.dispatch(
-                view.state.update({
-                    selection: {
-                        anchor: posToOffset(view.state.doc, range.start),
-                        head: posToOffset(view.state.doc, range.end),
-                    },
-                }),
-            );
-        }
-
-        return {
-            uri,
-            range,
-        };
+        return this.requestLocation(
+            view,
+            { line, character },
+            'typeDefinitionProvider',
+            'textDocumentTypeDefinition',
+        );
     }
 
     public processNotification(notification: Notification) {
