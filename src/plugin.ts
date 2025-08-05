@@ -144,7 +144,7 @@ export class LanguageServerClient<InitializationOptions = unknown> {
                 textDocument: {
                     hover: {
                         dynamicRegistration: true,
-                        contentFormat: ['plaintext', 'markdown'],
+                        contentFormat: ['markdown', 'plaintext'],
                     },
                     moniker: {},
                     synchronization: {
@@ -158,7 +158,7 @@ export class LanguageServerClient<InitializationOptions = unknown> {
                         completionItem: {
                             snippetSupport: false,
                             commitCharactersSupport: true,
-                            documentationFormat: ['plaintext', 'markdown'],
+                            documentationFormat: ['markdown', 'plaintext'],
                             deprecatedSupport: false,
                             preselectSupport: false,
                         },
@@ -167,7 +167,7 @@ export class LanguageServerClient<InitializationOptions = unknown> {
                     signatureHelp: {
                         dynamicRegistration: true,
                         signatureInformation: {
-                            documentationFormat: ['plaintext', 'markdown'],
+                            documentationFormat: ['markdown', 'plaintext'],
                         },
                     },
                     declaration: {
