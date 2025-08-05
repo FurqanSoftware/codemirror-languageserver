@@ -56,6 +56,10 @@ interface LSPRequestMap {
         LSP.DefinitionParams,
         LSP.Location | LSP.Location[] | LSP.LocationLink[] | null,
     ];
+    'textDocument/typeDefinition': [
+        LSP.TypeDefinitionParams,
+        LSP.Location | LSP.Location[] | LSP.LocationLink[] | null,
+    ];
 }
 
 // Client to server
@@ -231,6 +235,14 @@ export class LanguageServerClient<InitializationOptions = unknown> {
         return await this.request('textDocument/definition', params, timeout);
     }
 
+    public async textDocumentTypeDefinition(params: LSP.TypeDefinitionParams) {
+        return await this.request(
+            'textDocument/typeDefinition',
+            params,
+            timeout,
+        );
+    }
+
     public attachPlugin(plugin: LanguageServerPlugin) {
         this.plugins.push(plugin);
     }
@@ -268,7 +280,7 @@ export class LanguageServerClient<InitializationOptions = unknown> {
     }
 }
 
-class LanguageServerPlugin implements PluginValue {
+export class LanguageServerPlugin implements PluginValue {
     public client: LanguageServerClient;
 
     private documentUri: string;
@@ -586,6 +598,49 @@ class LanguageServerPlugin implements PluginValue {
         }
 
         const result = await this.client.textDocumentDefinition({
+            textDocument: { uri: this.documentUri },
+            position: { line, character },
+        });
+
+        if (!result) return;
+
+        const location = Array.isArray(result) ? result[0] : result;
+        const uri =
+            (location as LSP.Location).uri ||
+            (location as LSP.LocationLink).targetUri;
+        const range =
+            (location as LSP.Location).range ||
+            (location as LSP.LocationLink).targetRange;
+
+        if (uri === this.documentUri) {
+            view.dispatch(
+                view.state.update({
+                    selection: {
+                        anchor: posToOffset(view.state.doc, range.start),
+                        head: posToOffset(view.state.doc, range.end),
+                    },
+                }),
+            );
+        }
+
+        return {
+            uri,
+            range,
+        };
+    }
+
+    public async requestTypeDefinition(
+        view: EditorView,
+        { line, character }: { line: number; character: number },
+    ) {
+        if (
+            !this.client.ready ||
+            !this.client.capabilities!.typeDefinitionProvider
+        ) {
+            return null;
+        }
+
+        const result = await this.client.textDocumentTypeDefinition({
             textDocument: { uri: this.documentUri },
             position: { line, character },
         });
