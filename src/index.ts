@@ -9,3 +9,11 @@ export {
     jumpToDefinitionPos,
     jumpToDefinitionKeymap,
 } from './definition';
+export {
+    PyrightInitializationOptions,
+    RustAnalyzerInitializationOptions,
+    TypeScriptInitializationOptions,
+    ESLintInitializationOptions,
+    ClangdInitializationOptions,
+    GoplsInitializationOptions,
+} from './initialization';
