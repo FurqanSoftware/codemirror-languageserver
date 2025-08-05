@@ -1,12 +1,7 @@
-import { autocompletion, insertCompletionText } from '@codemirror/autocomplete';
+import { insertCompletionText } from '@codemirror/autocomplete';
 import { setDiagnostics } from '@codemirror/lint';
 import { Facet } from '@codemirror/state';
-import {
-    EditorView,
-    hoverTooltip,
-    Tooltip,
-    ViewPlugin,
-} from '@codemirror/view';
+import { EditorView, Tooltip, ViewPlugin } from '@codemirror/view';
 import {
     Client,
     RequestManager,
@@ -279,16 +274,28 @@ class LanguageServerPlugin implements PluginValue {
     private documentUri: string;
     private languageId: string;
     private documentVersion: number;
+    private allowHTMLContent: boolean;
 
     private changesTimeout: number;
 
     constructor(
         private view: EditorView,
-        private allowHTMLContent: boolean,
+        {
+            client,
+            documentUri,
+            languageId,
+            allowHTMLContent,
+        }: {
+            client: LanguageServerClient;
+            documentUri: string;
+            languageId: string;
+            allowHTMLContent: boolean;
+        },
     ) {
-        this.client = this.view.state.facet(client);
-        this.documentUri = this.view.state.facet(documentUri);
-        this.languageId = this.view.state.facet(languageId);
+        this.client = client;
+        this.documentUri = documentUri;
+        this.languageId = languageId;
+        this.allowHTMLContent = allowHTMLContent;
         this.documentVersion = 0;
         this.changesTimeout = 0;
 
@@ -663,105 +670,18 @@ class LanguageServerPlugin implements PluginValue {
 
 export const languageServerPlugin = ViewPlugin.fromClass(LanguageServerPlugin);
 
-interface LanguageServerBaseOptions {
+export interface LanguageServerBaseOptions {
     rootUri: string | null;
     workspaceFolders: LSP.WorkspaceFolder[] | null;
     documentUri: string;
     languageId: string;
 }
 
-interface LanguageServerClientOptions<InitializationOptions = unknown>
+export interface LanguageServerClientOptions<InitializationOptions = unknown>
     extends LanguageServerBaseOptions {
     transport: Transport;
     autoClose?: boolean;
     initializationOptions?: InitializationOptions;
-}
-
-interface LanguageServerOptions<InitializationOptions = unknown>
-    extends LanguageServerClientOptions<InitializationOptions> {
-    client?: LanguageServerClient<InitializationOptions>;
-    allowHTMLContent?: boolean;
-}
-
-interface LanguageServerWebsocketOptions<InitializationOptions = unknown>
-    extends LanguageServerBaseOptions {
-    serverUri: `ws://${string}` | `wss://${string}`;
-    initializationOptions?: InitializationOptions;
-}
-
-export function languageServer<InitializationOptions = unknown>(
-    options: LanguageServerWebsocketOptions<InitializationOptions>,
-) {
-    const serverUri = options.serverUri;
-    const { serverUri: _, ...optionsWithoutServerUri } = options;
-    return languageServerWithTransport<InitializationOptions>({
-        ...optionsWithoutServerUri,
-        transport: new WebSocketTransport(serverUri),
-    });
-}
-
-export function languageServerWithTransport<InitializationOptions = unknown>(
-    options: LanguageServerOptions<InitializationOptions>,
-) {
-    return [
-        client.of(
-            options.client ||
-                new LanguageServerClient<InitializationOptions>({
-                    ...options,
-                    autoClose: true,
-                }),
-        ),
-        documentUri.of(options.documentUri),
-        languageId.of(options.languageId),
-        languageServerPlugin.of(options.allowHTMLContent),
-        hoverTooltip((view, pos): Promise<Tooltip | null> => {
-            const plugin = view.plugin(languageServerPlugin);
-            return (
-                plugin?.requestHoverTooltip(
-                    view,
-                    offsetToPos(view.state.doc, pos),
-                ) ?? null
-            );
-        }),
-        autocompletion({
-            override: [
-                async (context) => {
-                    const { state, pos, explicit, view } = context;
-
-                    const plugin = view.plugin(languageServerPlugin);
-                    if (plugin == null) return null;
-
-                    const line = state.doc.lineAt(pos);
-                    let trigKind: CompletionTriggerKind =
-                        CompletionTriggerKind.Invoked;
-                    let trigChar: string | undefined;
-                    if (
-                        !explicit &&
-                        plugin.client.capabilities?.completionProvider?.triggerCharacters?.includes(
-                            line.text[pos - line.from - 1],
-                        )
-                    ) {
-                        trigKind = CompletionTriggerKind.TriggerCharacter;
-                        trigChar = line.text[pos - line.from - 1];
-                    }
-                    if (
-                        trigKind === CompletionTriggerKind.Invoked &&
-                        !context.matchBefore(/\w+$/)
-                    ) {
-                        return null;
-                    }
-                    return await plugin.requestCompletion(
-                        context,
-                        offsetToPos(state.doc, pos),
-                        {
-                            triggerCharacter: trigChar,
-                            triggerKind: trigKind,
-                        },
-                    );
-                },
-            ],
-        }),
-    ];
 }
 
 async function formatContents(
