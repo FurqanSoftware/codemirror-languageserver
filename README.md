@@ -6,6 +6,15 @@ This plugin enables code completion, hover tooltips, and linter functionality by
 
 [How It Works](https://hjr265.me/blog/codemirror-lsp/)
 
+## Features
+
+https://user-images.githubusercontent.com/348107/120141150-c6bb9180-c1fd-11eb-8ada-9b7b7a1e4ade.mp4
+
+- ⌨️ Code Completion
+- 📚 Hover Documentation
+- 🩺 Diagnostics
+- 🔍 Go to Definition, Declaration, and Type Definition
+
 ## Usage
 
 ```
@@ -59,8 +68,6 @@ The plugin includes built-in TypeScript definitions for popular language servers
 Contributions are welcome.
 
 ## Real World Uses
-
-https://user-images.githubusercontent.com/348107/120141150-c6bb9180-c1fd-11eb-8ada-9b7b7a1e4ade.mp4
 
 -   [Toph](https://toph.co): Competitive programming platform. Toph uses Language Server Plugin for CodeMirror 6 with its integrated code editor.
 
