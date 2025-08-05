@@ -36,8 +36,33 @@ import { languageServer } from '../src';
 
 const tabSizeCompartment = new Compartment();
 
+const doc = `#include <iostream>
+
+using namespace std;
+
+class Animal {
+	public:
+		void say(string call) {
+			cout << call << endl;
+		}
+};
+
+class Cat : Animal {
+	public:
+		void meow() {
+			this->say("meow");
+		}
+};
+
+int main() {
+	Cat cat;
+	cat.meow();
+	return 0;
+}
+`
+
 const view = new EditorView({
-    doc: '#include <iostream>\n\nusing namespace std;\n\nint main() {\n\treturn 0;\n}\n',
+    doc,
     parent: document.getElementById('editor'),
     extensions: [
         lineNumbers(),
