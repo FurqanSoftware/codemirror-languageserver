@@ -22,7 +22,7 @@ export default {
 		'@codemirror/tooltip',
 		'@codemirror/view',
 		'@open-rpc/client-js',
-		'marked/lib/marked.esm.js',
+		'marked',
 		'vscode-languageserver-protocol'
 	]
 };
