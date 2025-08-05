@@ -10,7 +10,7 @@ This plugin enables code completion, hover tooltips, and linter functionality by
 
 https://user-images.githubusercontent.com/348107/120141150-c6bb9180-c1fd-11eb-8ada-9b7b7a1e4ade.mp4
 
-- ⌨️ Code Completion
+- ⌨️ Code Completion (w/ Resolve Support)
 - 📚 Hover Documentation
 - 🩺 Diagnostics
 - 🔍 Go to Definition, Declaration, and Type Definition

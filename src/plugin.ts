@@ -64,6 +64,7 @@ interface LSPRequestMap {
         LSP.TypeDefinitionParams,
         LSP.Location | LSP.Location[] | LSP.LocationLink[] | null,
     ];
+    'completionItem/resolve': [LSP.CompletionItem, LSP.CompletionItem];
 }
 
 // Client to server
@@ -177,6 +178,9 @@ export class LanguageServerClient<InitializationOptions = unknown> {
                             documentationFormat: ['markdown', 'plaintext'],
                             deprecatedSupport: false,
                             preselectSupport: false,
+                            resolveSupport: {
+                                properties: ['detail', 'documentation'],
+                            },
                         },
                         contextSupport: true,
                     },
@@ -261,6 +265,12 @@ export class LanguageServerClient<InitializationOptions = unknown> {
             params,
             timeout,
         );
+    }
+
+    public async completionItemResolve(
+        params: LSP.CompletionItem,
+    ): Promise<LSP.CompletionItem> {
+        return await this.request('completionItem/resolve', params, timeout);
     }
 
     public attachPlugin(plugin: LanguageServerPlugin) {
@@ -496,108 +506,104 @@ export class LanguageServerPlugin implements PluginValue {
                     });
             }
         }
-        const options = items.map(
-            ({
+        const options = items.map((item) => {
+            const {
                 detail,
                 label,
                 kind,
                 textEdit,
                 documentation,
                 additionalTextEdits,
-            }) => {
-                const completion: Completion = {
-                    label,
-                    detail,
-                    apply(
-                        view: EditorView,
-                        completion: Completion,
-                        from: number,
-                        to: number,
-                    ) {
-                        if (isLSPTextEdit(textEdit)) {
-                            view.dispatch(
-                                insertCompletionText(
-                                    view.state,
-                                    textEdit.newText,
-                                    posToOffset(
-                                        view.state.doc,
-                                        textEdit.range.start,
-                                    ),
-                                    posToOffset(
-                                        view.state.doc,
-                                        textEdit.range.end,
-                                    ),
+            } = item;
+            const completion: Completion = {
+                label,
+                detail,
+                apply(
+                    view: EditorView,
+                    completion: Completion,
+                    from: number,
+                    to: number,
+                ) {
+                    if (isLSPTextEdit(textEdit)) {
+                        view.dispatch(
+                            insertCompletionText(
+                                view.state,
+                                textEdit.newText,
+                                posToOffset(
+                                    view.state.doc,
+                                    textEdit.range.start,
                                 ),
-                            );
-                        } else {
+                                posToOffset(view.state.doc, textEdit.range.end),
+                            ),
+                        );
+                    } else {
+                        view.dispatch(
+                            insertCompletionText(view.state, label, from, to),
+                        );
+                    }
+                    if (!additionalTextEdits) {
+                        return;
+                    }
+                    additionalTextEdits
+                        .sort(
+                            ({ range: { end: a } }, { range: { end: b } }) => {
+                                if (
+                                    posToOffset(view.state.doc, a) <
+                                    posToOffset(view.state.doc, b)
+                                ) {
+                                    return 1;
+                                } else if (
+                                    posToOffset(view.state.doc, a) >
+                                    posToOffset(view.state.doc, b)
+                                ) {
+                                    return -1;
+                                }
+                                return 0;
+                            },
+                        )
+                        .forEach((textEdit) => {
                             view.dispatch(
-                                insertCompletionText(
-                                    view.state,
-                                    label,
-                                    from,
-                                    to,
-                                ),
+                                view.state.update({
+                                    changes: {
+                                        from: posToOffset(
+                                            view.state.doc,
+                                            textEdit.range.start,
+                                        ),
+                                        to: posToOffset(
+                                            view.state.doc,
+                                            textEdit.range.end,
+                                        ),
+                                        insert: textEdit.newText,
+                                    },
+                                }),
                             );
-                        }
-                        if (!additionalTextEdits) {
-                            return;
-                        }
-                        additionalTextEdits
-                            .sort(
-                                (
-                                    { range: { end: a } },
-                                    { range: { end: b } },
-                                ) => {
-                                    if (
-                                        posToOffset(view.state.doc, a) <
-                                        posToOffset(view.state.doc, b)
-                                    ) {
-                                        return 1;
-                                    } else if (
-                                        posToOffset(view.state.doc, a) >
-                                        posToOffset(view.state.doc, b)
-                                    ) {
-                                        return -1;
-                                    }
-                                    return 0;
-                                },
-                            )
-                            .forEach((textEdit) => {
-                                view.dispatch(
-                                    view.state.update({
-                                        changes: {
-                                            from: posToOffset(
-                                                view.state.doc,
-                                                textEdit.range.start,
-                                            ),
-                                            to: posToOffset(
-                                                view.state.doc,
-                                                textEdit.range.end,
-                                            ),
-                                            insert: textEdit.newText,
-                                        },
-                                    }),
-                                );
-                            });
-                    },
-                    type: kind && CompletionItemKindMap[kind].toLowerCase(),
-                };
-                if (documentation) {
-                    completion.info = async () => {
-                        const dom = document.createElement('div');
-                        dom.classList.add('documentation');
-                        if (this.allowHTMLContent) {
-                            dom.innerHTML = await formatContents(documentation);
-                        } else {
-                            dom.textContent =
-                                await formatContents(documentation);
-                        }
-                        return dom;
-                    };
+                        });
+                },
+                type: kind && CompletionItemKindMap[kind].toLowerCase(),
+            };
+            completion.info = async () => {
+                let { documentation } = item;
+                if (
+                    !documentation &&
+                    this.client.capabilities!.completionProvider
+                        ?.resolveProvider
+                ) {
+                    const resolvedItem =
+                        await this.client.completionItemResolve(item);
+                    documentation = resolvedItem.documentation;
                 }
-                return completion;
-            },
-        );
+                if (!documentation) return null;
+                const dom = document.createElement('div');
+                dom.classList.add('documentation');
+                if (this.allowHTMLContent) {
+                    dom.innerHTML = await formatContents(documentation);
+                } else {
+                    dom.textContent = await formatContents(documentation);
+                }
+                return dom;
+            };
+            return completion;
+        });
 
         return {
             from: pos,
