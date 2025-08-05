@@ -24,6 +24,7 @@ import type {
 import { jumpToDefinitionKeymap } from './definition';
 import { hoverTooltip } from './hover';
 import { autocompletion } from './completion';
+import { mouseHandler } from './mouse';
 
 interface LanguageServerOptions<InitializationOptions = unknown>
     extends LanguageServerClientOptions<InitializationOptions> {
@@ -66,5 +67,6 @@ export function languageServerWithTransport<InitializationOptions = unknown>(
         hoverTooltip(),
         autocompletion(),
         keymap.of([...jumpToDefinitionKeymap]),
+        mouseHandler(),
     ];
 }

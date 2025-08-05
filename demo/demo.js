@@ -32,11 +32,7 @@ import {
 } from '@codemirror/autocomplete';
 import { lintKeymap } from '@codemirror/lint';
 import { cpp } from '@codemirror/lang-cpp';
-import {
-    languageServer,
-    jumpToDefinitionKeymap,
-    jumpToDefinitionPos,
-} from '../src';
+import { languageServer } from '../src';
 
 const tabSizeCompartment = new Compartment();
 
@@ -83,17 +79,6 @@ const view = new EditorView({
             ],
             documentUri: `file:///demo/main.cpp`,
             languageId: 'cpp',
-        }),
-        EditorView.domEventHandlers({
-            click: (event, view) => {
-                if (!event.ctrlKey && !event.metaKey) return;
-                const pos = view.posAtCoords({
-                    x: event.clientX,
-                    y: event.clientY,
-                });
-                const ok = jumpToDefinitionPos(pos)(view);
-                if (ok) event.preventDefault();
-            },
         }),
     ],
 });
