@@ -1,4 +1,8 @@
-export { LanguageServerClient, languageServerPlugin } from './plugin';
+export {
+    LanguageServerClient,
+    languageServerPlugin,
+    SynchronizationMethod,
+} from './plugin';
 export {
     jumpToDefinition,
     jumpToDefinitionPos,
@@ -16,7 +20,11 @@ export {
 import { keymap } from '@codemirror/view';
 import { WebSocketTransport } from '@open-rpc/client-js';
 
-import { LanguageServerClient, languageServerPlugin } from './plugin';
+import {
+    LanguageServerClient,
+    languageServerPlugin,
+    SynchronizationMethod,
+} from './plugin';
 import type {
     LanguageServerClientOptions,
     LanguageServerBaseOptions,
@@ -30,6 +38,7 @@ interface LanguageServerOptions<InitializationOptions = unknown>
     extends LanguageServerClientOptions<InitializationOptions> {
     client?: LanguageServerClient<InitializationOptions>;
     allowHTMLContent?: boolean;
+    synchronizationMethod?: SynchronizationMethod;
 }
 
 interface LanguageServerWebsocketOptions<InitializationOptions = unknown>
@@ -63,6 +72,7 @@ export function languageServerWithTransport<InitializationOptions = unknown>(
             documentUri: options.documentUri,
             languageId: options.languageId,
             allowHTMLContent: options.allowHTMLContent,
+            synchronizationMethod: options.synchronizationMethod,
         }),
         hoverTooltip(),
         autocompletion(),

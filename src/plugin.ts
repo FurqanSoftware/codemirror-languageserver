@@ -26,6 +26,7 @@ import type { PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 import type * as LSP from 'vscode-languageserver-protocol';
 
 import { posToOffset, offsetToPos } from './pos';
+import { changeSetToEvents } from './changes';
 
 const timeout = 10000;
 const changesDelay = 500;
@@ -310,6 +311,11 @@ export class LanguageServerClient<InitializationOptions = unknown> {
     }
 }
 
+export enum SynchronizationMethod {
+    Full = 'full',
+    Incremental = 'incremental',
+}
+
 export class LanguageServerPlugin implements PluginValue {
     public client: LanguageServerClient;
 
@@ -317,8 +323,7 @@ export class LanguageServerPlugin implements PluginValue {
     private languageId: string;
     private documentVersion: number;
     private allowHTMLContent: boolean;
-
-    private changesTimeout: number;
+    private synchronizationMethod: SynchronizationMethod;
 
     constructor(
         private view: EditorView,
@@ -327,19 +332,21 @@ export class LanguageServerPlugin implements PluginValue {
             documentUri,
             languageId,
             allowHTMLContent,
+            synchronizationMethod,
         }: {
             client: LanguageServerClient;
             documentUri: string;
             languageId: string;
             allowHTMLContent: boolean;
+            synchronizationMethod: SynchronizationMethod;
         },
     ) {
         this.client = client;
         this.documentUri = documentUri;
         this.languageId = languageId;
         this.allowHTMLContent = allowHTMLContent;
+        this.synchronizationMethod = synchronizationMethod;
         this.documentVersion = 0;
-        this.changesTimeout = 0;
 
         this.client.attachPlugin(this);
 
@@ -348,18 +355,24 @@ export class LanguageServerPlugin implements PluginValue {
         });
     }
 
-    public update({ docChanged }: ViewUpdate) {
+    public update({ state, changes, startState, docChanged }: ViewUpdate) {
         if (!docChanged) {
             return;
         }
-        if (this.changesTimeout) {
-            clearTimeout(this.changesTimeout);
+
+        switch (this.synchronizationMethod) {
+            case SynchronizationMethod.Full:
+                this.sendChanges([
+                    {
+                        text: this.view.state.doc.toString(),
+                    },
+                ]);
+                break;
+
+            case SynchronizationMethod.Incremental:
+                this.sendChanges(changeSetToEvents(startState.doc, changes));
+                break;
         }
-        this.changesTimeout = self.setTimeout(() => {
-            this.sendChange({
-                documentText: this.view.state.doc.toString(),
-            });
-        }, changesDelay);
     }
 
     public destroy() {
@@ -380,7 +393,9 @@ export class LanguageServerPlugin implements PluginValue {
         });
     }
 
-    public async sendChange({ documentText }: { documentText: string }) {
+    public async sendChanges(
+        contentChanges: LSP.TextDocumentContentChangeEvent[],
+    ) {
         if (!this.client.ready) {
             return;
         }
@@ -390,7 +405,7 @@ export class LanguageServerPlugin implements PluginValue {
                     uri: this.documentUri,
                     version: this.documentVersion++,
                 },
-                contentChanges: [{ text: documentText }],
+                contentChanges,
             });
         } catch (e) {
             console.error(e);
@@ -398,7 +413,7 @@ export class LanguageServerPlugin implements PluginValue {
     }
 
     public requestDiagnostics(view: EditorView) {
-        this.sendChange({ documentText: view.state.doc.toString() });
+        this.sendChanges([{ text: view.state.doc.toString() }]);
     }
 
     public async requestHoverTooltip(
@@ -458,9 +473,6 @@ export class LanguageServerPlugin implements PluginValue {
         ) {
             return null;
         }
-        this.sendChange({
-            documentText: context.state.doc.toString(),
-        });
 
         const result = await this.client.textDocumentCompletion({
             textDocument: { uri: this.documentUri },
