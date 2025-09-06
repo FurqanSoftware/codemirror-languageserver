@@ -345,7 +345,8 @@ export class LanguageServerPlugin implements PluginValue {
         this.documentUri = documentUri;
         this.languageId = languageId;
         this.allowHTMLContent = allowHTMLContent;
-        this.synchronizationMethod = synchronizationMethod;
+        this.synchronizationMethod =
+            synchronizationMethod ?? SynchronizationMethod.Full;
         this.documentVersion = 0;
 
         this.client.attachPlugin(this);
