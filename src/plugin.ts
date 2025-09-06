@@ -409,7 +409,6 @@ export class LanguageServerPlugin implements PluginValue {
             return null;
         }
 
-        this.sendChange({ documentText: view.state.doc.toString() });
         const result = await this.client.textDocumentHover({
             textDocument: { uri: this.documentUri },
             position: { line, character },
