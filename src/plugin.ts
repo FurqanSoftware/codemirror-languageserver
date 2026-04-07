@@ -548,74 +548,59 @@ export class LanguageServerPlugin implements PluginValue {
                     from: number,
                     to: number,
                 ) {
+                    const changes = [];
+
                     if (isLSPTextEdit(textEdit)) {
-                        view.dispatch(
-                            insertCompletionText(
-                                view.state,
-                                textEdit.newText,
+                        changes.push({
+                            from: posToOffset(
+                                view.state.doc,
+                                textEdit.range.start,
+                            ),
+                            to: Math.max(
                                 posToOffset(
                                     view.state.doc,
-                                    textEdit.range.start,
+                                    textEdit.range.end,
                                 ),
-                                posToOffset(view.state.doc, textEdit.range.end),
+                                to,
                             ),
-                        );
-                    } else {
-                        view.dispatch(
-                            insertCompletionText(view.state, label, from, to),
-                        );
-                    }
-                    if (!additionalTextEdits) {
-                        return;
-                    }
-                    additionalTextEdits
-                        .sort(
-                            ({ range: { end: a } }, { range: { end: b } }) => {
-                                if (
-                                    posToOffset(view.state.doc, a) <
-                                    posToOffset(view.state.doc, b)
-                                ) {
-                                    return 1;
-                                } else if (
-                                    posToOffset(view.state.doc, a) >
-                                    posToOffset(view.state.doc, b)
-                                ) {
-                                    return -1;
-                                }
-                                return 0;
-                            },
-                        )
-                        .forEach((textEdit) => {
-                            view.dispatch(
-                                view.state.update({
-                                    changes: {
-                                        from: posToOffset(
-                                            view.state.doc,
-                                            textEdit.range.start,
-                                        ),
-                                        to: posToOffset(
-                                            view.state.doc,
-                                            textEdit.range.end,
-                                        ),
-                                        insert: textEdit.newText,
-                                    },
-                                }),
-                            );
+                            insert: textEdit.newText,
                         });
+                    } else {
+                        changes.push({
+                            from,
+                            to,
+                            insert: label,
+                        });
+                    }
+
+                    if (additionalTextEdits) {
+                        for (const edit of additionalTextEdits) {
+                            changes.push({
+                                from: posToOffset(
+                                    view.state.doc,
+                                    edit.range.start,
+                                ),
+                                to: posToOffset(view.state.doc, edit.range.end),
+                                insert: edit.newText,
+                            });
+                        }
+                    }
+
+                    view.dispatch(view.state.update({ changes }));
                 },
                 type: kind && CompletionItemKindMap[kind].toLowerCase(),
             };
             completion.info = async () => {
-                let { documentation } = item;
                 if (
-                    !documentation &&
+                    !item.documentation &&
                     this.client.capabilities!.completionProvider
                         ?.resolveProvider
                 ) {
                     const resolvedItem =
                         await this.client.completionItemResolve(item);
-                    documentation = resolvedItem.documentation;
+                    item.documentation = resolvedItem.documentation;
                 }
+                const { documentation } = item;
                 if (!documentation) return null;
                 const dom = document.createElement('div');
                 dom.classList.add('documentation');
@@ -799,9 +784,7 @@ async function formatContents(
         const parts = await Promise.all(contents.map((c) => formatContents(c)));
         const isHTML = parts.some((p) => p.isHTML);
         const value = parts
-            .map((p) =>
-                isHTML && !p.isHTML ? escapeHTML(p.value) : p.value,
-            )
+            .map((p) => (isHTML && !p.isHTML ? escapeHTML(p.value) : p.value))
             .join(isHTML ? '<br><br>' : '\n\n');
         return { value, isHTML };
     } else if (typeof contents === 'string') {
