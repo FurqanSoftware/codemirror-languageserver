@@ -125,6 +125,23 @@ keymap.of([
 
 Style the rename panel with CSS using the `cm-lsp-rename-panel` and `cm-lsp-rename-input` classes.
 
+### Server Capabilities
+
+Use the `onCapabilities` callback to be notified when the server's capabilities are available (e.g. to update a toolbar):
+
+```js
+languageServer({
+    serverUri,
+    rootUri: 'file:///',
+    documentUri: `file:///${filename}`,
+    languageId: 'cpp',
+    onCapabilities(capabilities) {
+        // capabilities.documentFormattingProvider, capabilities.renameProvider, etc.
+        toolbar.update({ capabilities });
+    },
+})
+```
+
 ### Using with Initialization Options
 
 The plugin includes built-in TypeScript definitions for popular language servers:

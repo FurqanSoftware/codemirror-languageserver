@@ -245,6 +245,7 @@ export class LanguageServerClient<InitializationOptions = unknown> {
         this.capabilities = capabilities;
         this.notify('initialized', {});
         this.ready = true;
+        this.options.onCapabilities?.(capabilities);
     }
 
     public close() {
@@ -837,6 +838,7 @@ export interface LanguageServerClientOptions<InitializationOptions = unknown>
     autoClose?: boolean;
     initializationOptions?: InitializationOptions;
     locale?: string;
+    onCapabilities?: (capabilities: LSP.ServerCapabilities) => void;
 }
 
 async function formatContents(
