@@ -24,8 +24,6 @@ npm i codemirror-languageserver
 ```js
 import { languageServer } from 'codemirror-languageserver';
 
-const transport = new WebSocketTransport(serverUri);
-
 var ls = languageServer({
     // WebSocket server uri and other client options.
     serverUri,
@@ -33,7 +31,7 @@ var ls = languageServer({
 
     // Alternatively, to share the same client across multiple instances of this plugin.
     client: new LanguageServerClient({
-        serverUri,
+        transport: new WebSocketTransport(serverUri),
         rootUri: 'file:///',
     }),
 
@@ -51,6 +49,23 @@ var view = new EditorView({
     }),
 });
 ```
+
+### Custom Transport
+
+Use `languageServerWithTransport` to provide a custom transport (e.g. for non-WebSocket connections):
+
+```js
+import { languageServerWithTransport } from 'codemirror-languageserver';
+
+var ls = languageServerWithTransport({
+    transport: myCustomTransport, // Must implement the Transport interface
+    rootUri: 'file:///',
+    documentUri: `file:///${filename}`,
+    languageId: 'cpp',
+});
+```
+
+The `Transport` interface requires `send`, `onMessage`, `onClose`, `onError`, and `close` methods. You can import `Transport` and `WebSocketTransport` from the package.
 
 ### Using with Initialization Options
 
