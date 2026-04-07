@@ -77,23 +77,39 @@ export class JSONRPCClient {
     private nextId = 0;
     private pending = new Map<number, PendingRequest>();
     private notificationHandlers: Array<(data: any) => void> = [];
+    private errorHandlers: Array<(error: Error) => void> = [];
+    private closeHandlers: Array<() => void> = [];
     private ready: Promise<void>;
 
     constructor(transport: Transport) {
         this.transport = transport;
-        this.ready = new Promise((resolve, reject) => {
+        this.ready = new Promise<void>((resolve) => {
             if (transport instanceof WebSocketTransport) {
                 const ws = transport.connection;
                 if (ws.readyState === WebSocket.OPEN) {
                     resolve();
                 } else {
                     ws.addEventListener('open', () => resolve());
-                    ws.addEventListener('error', () =>
-                        reject(new Error('WebSocket connection failed')),
-                    );
                 }
             } else {
                 resolve();
+            }
+        });
+
+        transport.onError((error) => {
+            for (const handler of this.errorHandlers) {
+                handler(error);
+            }
+        });
+
+        transport.onClose(() => {
+            for (const [, pending] of this.pending) {
+                clearTimeout(pending.timer);
+                pending.reject(new Error('Connection closed'));
+            }
+            this.pending.clear();
+            for (const handler of this.closeHandlers) {
+                handler();
             }
         });
 
@@ -158,6 +174,14 @@ export class JSONRPCClient {
 
     onNotification(handler: (data: any) => void): void {
         this.notificationHandlers.push(handler);
+    }
+
+    onError(handler: (error: Error) => void): void {
+        this.errorHandlers.push(handler);
+    }
+
+    onClose(handler: () => void): void {
+        this.closeHandlers.push(handler);
     }
 
     close(): void {

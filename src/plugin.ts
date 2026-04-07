@@ -162,7 +162,18 @@ export class LanguageServerClient<InitializationOptions = unknown> {
             this.processNotification(data as any);
         });
 
-        this.initializePromise = this.initialize();
+        this.client.onError((error) => {
+            this.options.onError?.(error);
+        });
+
+        this.client.onClose(() => {
+            this.ready = false;
+            this.options.onClose?.();
+        });
+
+        this.initializePromise = this.initialize().catch((error) => {
+            this.options.onError?.(error);
+        });
     }
 
     protected getInitializeParams(): LSP.InitializeParams {
@@ -861,6 +872,10 @@ export interface LanguageServerClientOptions<InitializationOptions = unknown>
     locale?: string;
     /** Called once after initialization with the server's capabilities. */
     onCapabilities?: (capabilities: LSP.ServerCapabilities) => void;
+    /** Called when the connection encounters an error. */
+    onError?: (error: Error) => void;
+    /** Called when the connection is closed. */
+    onClose?: () => void;
 }
 
 async function formatContents(
