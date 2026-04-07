@@ -73,6 +73,11 @@ interface LSPRequestMap {
         LSP.DocumentRangeFormattingParams,
         LSP.TextEdit[] | null,
     ];
+    'textDocument/prepareRename': [
+        LSP.PrepareRenameParams,
+        LSP.Range | { range: LSP.Range; placeholder: string } | null,
+    ];
+    'textDocument/rename': [LSP.RenameParams, LSP.WorkspaceEdit | null];
     'completionItem/resolve': [LSP.CompletionItem, LSP.CompletionItem];
 }
 
@@ -212,6 +217,10 @@ export class LanguageServerClient<InitializationOptions = unknown> {
                     rangeFormatting: {
                         dynamicRegistration: true,
                     },
+                    rename: {
+                        dynamicRegistration: true,
+                        prepareSupport: true,
+                    },
                 },
                 workspace: {
                     didChangeConfiguration: {
@@ -300,6 +309,18 @@ export class LanguageServerClient<InitializationOptions = unknown> {
             params,
             timeout,
         );
+    }
+
+    public async textDocumentPrepareRename(params: LSP.PrepareRenameParams) {
+        return await this.request(
+            'textDocument/prepareRename',
+            params,
+            timeout,
+        );
+    }
+
+    public async textDocumentRename(params: LSP.RenameParams) {
+        return await this.request('textDocument/rename', params, timeout);
     }
 
     public async completionItemResolve(

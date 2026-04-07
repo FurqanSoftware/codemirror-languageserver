@@ -16,6 +16,7 @@ https://user-images.githubusercontent.com/348107/120141150-c6bb9180-c1fd-11eb-8a
 - 🔍 Go to Definition, Declaration, and Type Definition
 - 🔦 Document Highlight
 - 🎨 Document Formatting and Range Formatting
+- ✏️ Rename Symbol
 
 ## Usage
 
@@ -108,6 +109,21 @@ formattingOptions.of({
 ```
 
 By default, `tabSize` is read from the editor state.
+
+### Rename Symbol
+
+`renameSymbol` is a CodeMirror command that opens a rename prompt at the top of the editor:
+
+```js
+import { keymap } from '@codemirror/view';
+import { renameSymbol } from 'codemirror-languageserver';
+
+keymap.of([
+    { key: 'F2', run: renameSymbol },
+])
+```
+
+Style the rename panel with CSS using the `cm-lsp-rename-panel` and `cm-lsp-rename-input` classes.
 
 ### Using with Initialization Options
 

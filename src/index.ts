@@ -15,6 +15,7 @@ export {
     formatSelection,
     formattingOptions,
 } from './formatting';
+export { renameSymbol } from './rename';
 export {
     PyrightInitializationOptions,
     RustAnalyzerInitializationOptions,
@@ -41,6 +42,7 @@ import { hoverTooltip } from './hover';
 import { autocompletion } from './completion';
 import { documentHighlight } from './highlight';
 import { mouseHandler } from './mouse';
+import { renameExtension } from './rename';
 
 interface LanguageServerOptions<InitializationOptions = unknown>
     extends LanguageServerClientOptions<InitializationOptions> {
@@ -85,6 +87,7 @@ export function languageServerWithTransport<InitializationOptions = unknown>(
         hoverTooltip(),
         autocompletion(),
         documentHighlight(),
+        renameExtension(),
         keymap.of([...jumpToDefinitionKeymap]),
         mouseHandler(),
     ];
