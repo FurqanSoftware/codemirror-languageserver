@@ -309,6 +309,8 @@ export class LanguageServerPlugin implements PluginValue {
     private documentVersion: number;
     private allowHTMLContent: boolean;
     private synchronizationMethod: SynchronizationMethod;
+    private changesTimeout: ReturnType<typeof setTimeout> | null = null;
+    private pendingChanges: LSP.TextDocumentContentChangeEvent[] | null = null;
 
     constructor(
         private view: EditorView,
@@ -346,22 +348,46 @@ export class LanguageServerPlugin implements PluginValue {
             return;
         }
 
+        if (this.changesTimeout) {
+            clearTimeout(this.changesTimeout);
+        }
+
         switch (this.synchronizationMethod) {
             case SynchronizationMethod.Full:
-                this.sendChanges([
+                this.pendingChanges = [
                     {
                         text: this.view.state.doc.toString(),
                     },
-                ]);
+                ];
                 break;
 
             case SynchronizationMethod.Incremental:
-                this.sendChanges(changeSetToEvents(startState.doc, changes));
+                if (!this.pendingChanges) {
+                    this.pendingChanges = [];
+                }
+                this.pendingChanges.push(
+                    ...changeSetToEvents(startState.doc, changes),
+                );
                 break;
         }
+
+        this.changesTimeout = setTimeout(() => {
+            this.changesTimeout = null;
+            if (this.pendingChanges) {
+                this.sendChanges(this.pendingChanges);
+                this.pendingChanges = null;
+            }
+        }, changesDelay);
     }
 
     public destroy() {
+        if (this.changesTimeout) {
+            clearTimeout(this.changesTimeout);
+            if (this.pendingChanges) {
+                this.sendChanges(this.pendingChanges);
+                this.pendingChanges = null;
+            }
+        }
         this.client.detachPlugin(this);
     }
 
