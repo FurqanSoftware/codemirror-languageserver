@@ -11,6 +11,11 @@ export {
     jumpToDefinitionKeymap,
 } from './definition';
 export {
+    formatDocument,
+    formatSelection,
+    formattingOptions,
+} from './formatting';
+export {
     PyrightInitializationOptions,
     RustAnalyzerInitializationOptions,
     TypeScriptInitializationOptions,
@@ -34,6 +39,7 @@ import type {
 import { jumpToDefinitionKeymap } from './definition';
 import { hoverTooltip } from './hover';
 import { autocompletion } from './completion';
+import { documentHighlight } from './highlight';
 import { mouseHandler } from './mouse';
 
 interface LanguageServerOptions<InitializationOptions = unknown>
@@ -78,6 +84,7 @@ export function languageServerWithTransport<InitializationOptions = unknown>(
         }),
         hoverTooltip(),
         autocompletion(),
+        documentHighlight(),
         keymap.of([...jumpToDefinitionKeymap]),
         mouseHandler(),
     ];

@@ -61,6 +61,18 @@ interface LSPRequestMap {
         LSP.TypeDefinitionParams,
         LSP.Location | LSP.Location[] | LSP.LocationLink[] | null,
     ];
+    'textDocument/documentHighlight': [
+        LSP.DocumentHighlightParams,
+        LSP.DocumentHighlight[] | null,
+    ];
+    'textDocument/formatting': [
+        LSP.DocumentFormattingParams,
+        LSP.TextEdit[] | null,
+    ];
+    'textDocument/rangeFormatting': [
+        LSP.DocumentRangeFormattingParams,
+        LSP.TextEdit[] | null,
+    ];
     'completionItem/resolve': [LSP.CompletionItem, LSP.CompletionItem];
 }
 
@@ -191,6 +203,15 @@ export class LanguageServerClient<InitializationOptions = unknown> {
                         dynamicRegistration: true,
                         linkSupport: true,
                     },
+                    documentHighlight: {
+                        dynamicRegistration: true,
+                    },
+                    formatting: {
+                        dynamicRegistration: true,
+                    },
+                    rangeFormatting: {
+                        dynamicRegistration: true,
+                    },
                 },
                 workspace: {
                     didChangeConfiguration: {
@@ -253,6 +274,34 @@ export class LanguageServerClient<InitializationOptions = unknown> {
         );
     }
 
+    public async textDocumentDocumentHighlight(
+        params: LSP.DocumentHighlightParams,
+    ) {
+        return await this.request(
+            'textDocument/documentHighlight',
+            params,
+            timeout,
+        );
+    }
+
+    public async textDocumentFormatting(params: LSP.DocumentFormattingParams) {
+        return await this.request(
+            'textDocument/formatting',
+            params,
+            timeout,
+        );
+    }
+
+    public async textDocumentRangeFormatting(
+        params: LSP.DocumentRangeFormattingParams,
+    ) {
+        return await this.request(
+            'textDocument/rangeFormatting',
+            params,
+            timeout,
+        );
+    }
+
     public async completionItemResolve(
         params: LSP.CompletionItem,
     ): Promise<LSP.CompletionItem> {
@@ -304,7 +353,7 @@ export enum SynchronizationMethod {
 export class LanguageServerPlugin implements PluginValue {
     public client: LanguageServerClient;
 
-    private documentUri: string;
+    public documentUri: string;
     private languageId: string;
     private documentVersion: number;
     private allowHTMLContent: boolean;
