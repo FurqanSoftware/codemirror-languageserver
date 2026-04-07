@@ -44,7 +44,6 @@
         "@codemirror/lint": "^6.8.5",
         "@codemirror/state": "^6.5.2",
         "@codemirror/view": "^6.38.1",
-        "@open-rpc/client-js": "^1.8.1",
         "marked": "^16.1.2",
         "vscode-languageserver-protocol": "^3.17.5"
     },

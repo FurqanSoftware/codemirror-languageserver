@@ -3,6 +3,8 @@ export {
     languageServerPlugin,
     SynchronizationMethod,
 } from './plugin';
+export { WebSocketTransport } from './jsonrpc';
+export type { Transport } from './jsonrpc';
 export {
     jumpToDefinition,
     jumpToDefinitionPos,
@@ -18,7 +20,7 @@ export {
 } from './initialization';
 
 import { keymap } from '@codemirror/view';
-import { WebSocketTransport } from '@open-rpc/client-js';
+import { WebSocketTransport } from './jsonrpc';
 
 import {
     LanguageServerClient,

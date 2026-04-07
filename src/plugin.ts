@@ -2,11 +2,8 @@ import { insertCompletionText } from '@codemirror/autocomplete';
 import { setDiagnostics } from '@codemirror/lint';
 import { Facet } from '@codemirror/state';
 import { EditorView, Tooltip, ViewPlugin } from '@codemirror/view';
-import {
-    Client,
-    RequestManager,
-    WebSocketTransport,
-} from '@open-rpc/client-js';
+import { JSONRPCClient, WebSocketTransport } from './jsonrpc';
+import type { Transport } from './jsonrpc';
 import {
     CompletionItemKind,
     CompletionTriggerKind,
@@ -20,7 +17,6 @@ import type {
 } from '@codemirror/autocomplete';
 import type { Text } from '@codemirror/state';
 import type { PluginValue, ViewUpdate } from '@codemirror/view';
-import { Transport } from '@open-rpc/client-js/build/transports/Transport';
 import { marked } from 'marked';
 import type { PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 import type * as LSP from 'vscode-languageserver-protocol';
@@ -111,8 +107,7 @@ export class LanguageServerClient<InitializationOptions = unknown> {
     private autoClose?: boolean;
 
     private transport: Transport;
-    private requestManager: RequestManager;
-    private client: Client;
+    private client: JSONRPCClient;
 
     private plugins: LanguageServerPlugin[];
     private options: LanguageServerClientOptions<InitializationOptions>;
@@ -125,33 +120,22 @@ export class LanguageServerClient<InitializationOptions = unknown> {
         this.plugins = [];
         this.transport = options.transport;
 
-        this.requestManager = new RequestManager([this.transport]);
-        this.client = new Client(this.requestManager);
+        this.client = new JSONRPCClient(this.transport);
 
         this.client.onNotification((data) => {
+            if (data.method && data.id) {
+                // Server-to-client request: respond with null result.
+                // https://github.com/FurqanSoftware/codemirror-languageserver/issues/9
+                this.transport.send(
+                    JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: data.id,
+                        result: null,
+                    }),
+                );
+            }
             this.processNotification(data as any);
         });
-
-        const webSocketTransport = this.transport as WebSocketTransport;
-        if (webSocketTransport && webSocketTransport.connection) {
-            // XXX(hjr265): Need a better way to do this. Relevant issue:
-            // https://github.com/FurqanSoftware/codemirror-languageserver/issues/9
-            webSocketTransport.connection.addEventListener(
-                'message',
-                (message) => {
-                    const data = JSON.parse(message.data);
-                    if (data.method && data.id) {
-                        webSocketTransport.connection.send(
-                            JSON.stringify({
-                                jsonrpc: '2.0',
-                                id: data.id,
-                                result: null,
-                            }),
-                        );
-                    }
-                },
-            );
-        }
 
         this.initializePromise = this.initialize();
     }

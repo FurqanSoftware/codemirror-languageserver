@@ -21,7 +21,6 @@ export default {
         '@codemirror/state',
         '@codemirror/tooltip',
         '@codemirror/view',
-        '@open-rpc/client-js',
         'marked',
         'vscode-languageserver-protocol',
     ],
