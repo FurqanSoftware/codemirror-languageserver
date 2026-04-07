@@ -67,6 +67,28 @@ This sets up all built-in features: completion, hover, diagnostics, go-to-defini
 | `synchronizationMethod` | `SynchronizationMethod` | `'full'` or `'incremental'` document sync (default: `'full'`) |
 | `client` | `LanguageServerClient` | Share a client across multiple editor instances |
 | `onCapabilities` | `(capabilities) => void` | Called when server capabilities are available |
+| `onError` | `(error: Error) => void` | Called when the connection encounters an error |
+| `onClose` | `() => void` | Called when the connection is closed |
+
+## Error Handling
+
+The plugin does not crash on connection failures. Use `onError` and `onClose` to handle disconnections:
+
+```js
+languageServer({
+    serverUri: 'ws://localhost:8080',
+    rootUri: 'file:///',
+    documentUri: `file:///${filename}`,
+    languageId: 'cpp',
+    onError(error) {
+        console.error('LSP error:', error);
+    },
+    onClose() {
+        console.log('LSP connection closed');
+        // Recreate the editor extensions to reconnect
+    },
+})
+```
 
 ## Shared Client
 
