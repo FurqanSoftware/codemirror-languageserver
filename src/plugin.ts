@@ -429,10 +429,11 @@ export class LanguageServerPlugin implements PluginValue {
         }
         const dom = document.createElement('div');
         dom.classList.add('documentation');
-        if (this.allowHTMLContent) {
-            dom.innerHTML = await formatContents(contents);
+        const formatted = await formatContents(contents);
+        if (formatted.isHTML || this.allowHTMLContent) {
+            dom.innerHTML = formatted.value;
         } else {
-            dom.textContent = await formatContents(contents);
+            dom.textContent = formatted.value;
         }
         return {
             pos,
@@ -592,10 +593,11 @@ export class LanguageServerPlugin implements PluginValue {
                 if (!documentation) return null;
                 const dom = document.createElement('div');
                 dom.classList.add('documentation');
-                if (this.allowHTMLContent) {
-                    dom.innerHTML = await formatContents(documentation);
+                const formatted = await formatContents(documentation);
+                if (formatted.isHTML || this.allowHTMLContent) {
+                    dom.innerHTML = formatted.value;
                 } else {
-                    dom.textContent = await formatContents(documentation);
+                    dom.textContent = formatted.value;
                 }
                 return dom;
             };
@@ -758,18 +760,34 @@ export interface LanguageServerClientOptions<InitializationOptions = unknown>
 
 async function formatContents(
     contents: LSP.MarkupContent | LSP.MarkedString | LSP.MarkedString[],
-): Promise<string> {
+): Promise<{ value: string; isHTML: boolean }> {
     if (isLSPMarkupContent(contents)) {
-        let value = contents.value;
         if (contents.kind === 'markdown') {
-            value = await marked.parse(value);
+            return {
+                value: await marked.parse(contents.value),
+                isHTML: true,
+            };
         }
-        return value;
+        return { value: contents.value, isHTML: false };
     } else if (Array.isArray(contents)) {
-        return contents.map((c) => formatContents(c) + '\n\n').join('');
+        const parts = await Promise.all(contents.map((c) => formatContents(c)));
+        const isHTML = parts.some((p) => p.isHTML);
+        const value = parts
+            .map((p) =>
+                isHTML && !p.isHTML ? escapeHTML(p.value) : p.value,
+            )
+            .join(isHTML ? '<br><br>' : '\n\n');
+        return { value, isHTML };
     } else if (typeof contents === 'string') {
-        return contents;
+        return { value: contents, isHTML: false };
     }
+}
+
+function escapeHTML(text: string): string {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
 function toSet(chars: Set<string>) {
