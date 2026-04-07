@@ -27,6 +27,7 @@ export const autocompletion = (): Extension =>
                     trigChar = line.text[pos - line.from - 1];
                 }
                 if (
+                    !explicit &&
                     trigKind === CompletionTriggerKind.Invoked &&
                     !context.matchBefore(/\w+$/)
                 ) {
