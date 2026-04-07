@@ -199,6 +199,7 @@ export class LanguageServerClient<InitializationOptions = unknown> {
                 },
             },
             initializationOptions: this.options.initializationOptions ?? null,
+            locale: this.options.locale,
             processId: null,
             rootUri: this.rootUri,
             workspaceFolders: this.workspaceFolders,
@@ -752,6 +753,7 @@ export interface LanguageServerClientOptions<InitializationOptions = unknown>
     transport: Transport;
     autoClose?: boolean;
     initializationOptions?: InitializationOptions;
+    locale?: string;
 }
 
 async function formatContents(
