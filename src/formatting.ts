@@ -5,6 +5,12 @@ import type * as LSP from 'vscode-languageserver-protocol';
 import { languageServerPlugin } from './plugin';
 import { offsetToPos, posToOffset } from './pos';
 
+/**
+ * Facet for configuring LSP formatting options (tab size, spaces vs tabs, etc.).
+ *
+ * Defaults to `{ tabSize: 4, insertSpaces: true }`. The `tabSize` falls back
+ * to the editor state's `tabSize` if not explicitly set.
+ */
 export const formattingOptions = Facet.define<
     LSP.FormattingOptions,
     LSP.FormattingOptions
@@ -34,6 +40,7 @@ function applyTextEdits(view: EditorView, edits: LSP.TextEdit[]) {
     view.dispatch(view.state.update({ changes }));
 }
 
+/** Command: format the entire document using the language server. */
 export function formatDocument(view: EditorView): boolean {
     const plugin = view.plugin(languageServerPlugin);
     if (!plugin) return false;
@@ -59,6 +66,7 @@ export function formatDocument(view: EditorView): boolean {
     return true;
 }
 
+/** Command: format the current selection using the language server. */
 export function formatSelection(view: EditorView): boolean {
     const plugin = view.plugin(languageServerPlugin);
     if (!plugin) return false;

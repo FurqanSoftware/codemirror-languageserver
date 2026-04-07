@@ -57,6 +57,12 @@ interface LanguageServerWebsocketOptions<InitializationOptions = unknown>
     initializationOptions?: InitializationOptions;
 }
 
+/**
+ * Creates a set of CodeMirror extensions that connect to a language server over WebSocket.
+ *
+ * Includes completion, hover, diagnostics, go-to-definition, document highlight,
+ * and rename support. This is the main entry point for most use cases.
+ */
 export function languageServer<InitializationOptions = unknown>(
     options: LanguageServerWebsocketOptions<InitializationOptions>,
 ) {
@@ -68,6 +74,11 @@ export function languageServer<InitializationOptions = unknown>(
     });
 }
 
+/**
+ * Like {@link languageServer}, but accepts a custom {@link Transport} instead of a WebSocket URI.
+ *
+ * Use this when communicating with the language server over a non-WebSocket channel.
+ */
 export function languageServerWithTransport<InitializationOptions = unknown>(
     options: LanguageServerOptions<InitializationOptions>,
 ) {

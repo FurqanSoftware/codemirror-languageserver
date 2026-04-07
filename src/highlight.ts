@@ -131,6 +131,12 @@ const highlightPlugin = ViewPlugin.fromClass(
     },
 );
 
+/**
+ * Extension that highlights all occurrences of the symbol under the cursor.
+ *
+ * Applies CSS classes `cm-lsp-highlight-text`, `cm-lsp-highlight-read`, and
+ * `cm-lsp-highlight-write` based on the highlight kind returned by the server.
+ */
 export const documentHighlight = (): Extension => [
     highlightField,
     highlightPlugin,

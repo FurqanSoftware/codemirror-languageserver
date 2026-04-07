@@ -1,3 +1,10 @@
+/**
+ * Interface for sending and receiving JSON-RPC messages.
+ *
+ * Implement this to use a custom communication channel (e.g. Web Workers,
+ * MessagePort, or HTTP). See {@link WebSocketTransport} for a reference
+ * implementation.
+ */
 export interface Transport {
     send(message: string): void;
     onMessage(callback: (message: string) => void): void;
@@ -6,6 +13,7 @@ export interface Transport {
     close(): void;
 }
 
+/** A {@link Transport} that communicates over a browser-native WebSocket. */
 export class WebSocketTransport implements Transport {
     public connection: WebSocket;
 

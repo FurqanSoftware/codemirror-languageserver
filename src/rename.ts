@@ -127,6 +127,12 @@ async function performRename(view: EditorView, newName: string) {
     }
 }
 
+/**
+ * Command: open a rename prompt for the symbol at the cursor.
+ *
+ * Uses `textDocument/prepareRename` to pre-fill the current name if supported
+ * by the server. Press Enter to confirm or Escape to cancel.
+ */
 export function renameSymbol(view: EditorView): boolean {
     const plugin = view.plugin(languageServerPlugin);
     if (!plugin) return false;

@@ -114,8 +114,16 @@ interface LanguageServerClientLocationMethods {
     ): LSP.Location | LSP.Location[] | LSP.LocationLink[] | null;
 }
 
+/**
+ * Manages the JSON-RPC connection to a language server.
+ *
+ * Handles initialization, request/response routing, and notification dispatch.
+ * Can be shared across multiple editor instances via the `client` option.
+ */
 export class LanguageServerClient<InitializationOptions = unknown> {
+    /** Whether the server has finished initializing. */
     public ready: boolean;
+    /** The server's capabilities, available after initialization. */
     public capabilities: LSP.ServerCapabilities<any>;
 
     public initializePromise: Promise<void>;
@@ -367,8 +375,11 @@ export class LanguageServerClient<InitializationOptions = unknown> {
     }
 }
 
+/** Controls how document changes are sent to the language server. */
 export enum SynchronizationMethod {
+    /** Send the full document text on every change. */
     Full = 'full',
+    /** Send only the changed ranges. More efficient for large documents. */
     Incremental = 'incremental',
 }
 
@@ -825,19 +836,30 @@ export class LanguageServerPlugin implements PluginValue {
 
 export const languageServerPlugin = ViewPlugin.fromClass(LanguageServerPlugin);
 
+/** Base options shared by all language server configurations. */
 export interface LanguageServerBaseOptions {
+    /** Root URI of the workspace (e.g. `'file:///'`). */
     rootUri: string | null;
+    /** LSP workspace folders, if applicable. */
     workspaceFolders: LSP.WorkspaceFolder[] | null;
+    /** URI of the document being edited (e.g. `'file:///main.cpp'`). */
     documentUri: string;
+    /** Language identifier as defined by the LSP specification. */
     languageId: string;
 }
 
+/** Options for creating a {@link LanguageServerClient}. */
 export interface LanguageServerClientOptions<InitializationOptions = unknown>
     extends LanguageServerBaseOptions {
+    /** The transport used to communicate with the language server. */
     transport: Transport;
+    /** Close the transport when the last plugin detaches. */
     autoClose?: boolean;
+    /** Server-specific initialization options. */
     initializationOptions?: InitializationOptions;
+    /** Locale for the LSP session (e.g. `'en'`). Sent in the `initialize` request. */
     locale?: string;
+    /** Called once after initialization with the server's capabilities. */
     onCapabilities?: (capabilities: LSP.ServerCapabilities) => void;
 }
 
