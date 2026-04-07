@@ -14,6 +14,8 @@ https://user-images.githubusercontent.com/348107/120141150-c6bb9180-c1fd-11eb-8a
 - 📚 Hover Documentation
 - 🩺 Diagnostics
 - 🔍 Go to Definition, Declaration, and Type Definition
+- 🔦 Document Highlight
+- 🎨 Document Formatting and Range Formatting
 
 ## Usage
 
@@ -66,6 +68,46 @@ var ls = languageServerWithTransport({
 ```
 
 The `Transport` interface requires `send`, `onMessage`, `onClose`, `onError`, and `close` methods. You can import `Transport` and `WebSocketTransport` from the package.
+
+### Document Highlight
+
+Document highlights are enabled by default. When the cursor is on a symbol, all occurrences are highlighted. Style them with CSS:
+
+```css
+.cm-lsp-highlight-text,
+.cm-lsp-highlight-read { background-color: rgba(255, 255, 0, 0.2); }
+.cm-lsp-highlight-write { background-color: rgba(255, 165, 0, 0.3); }
+```
+
+### Formatting
+
+`formatDocument` and `formatSelection` are CodeMirror commands that you can bind to keys:
+
+```js
+import { keymap } from '@codemirror/view';
+import { formatDocument, formatSelection } from 'codemirror-languageserver';
+
+keymap.of([
+    { key: 'Shift-Alt-f', run: formatDocument },
+    { key: 'Ctrl-k Ctrl-f', run: formatSelection },
+])
+```
+
+To configure formatting options (tab size, spaces vs tabs, etc.), use the `formattingOptions` facet:
+
+```js
+import { formattingOptions } from 'codemirror-languageserver';
+
+// In extensions:
+formattingOptions.of({
+    tabSize: 2,
+    insertSpaces: true,
+    trimTrailingWhitespace: true,
+    insertFinalNewline: true,
+})
+```
+
+By default, `tabSize` is read from the editor state.
 
 ### Using with Initialization Options
 
