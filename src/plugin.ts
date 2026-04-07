@@ -284,7 +284,7 @@ export class LanguageServerClient<InitializationOptions = unknown> {
     protected notify<K extends keyof LSPNotifyMap>(
         method: K,
         params: LSPNotifyMap[K],
-    ): Promise<LSPNotifyMap[K]> {
+    ): Promise<void> {
         return this.client.notify({ method, params });
     }
 
