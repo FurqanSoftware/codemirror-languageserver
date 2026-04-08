@@ -25,7 +25,7 @@ import { posToOffset, offsetToPos } from './pos';
 import { changeSetToEvents } from './changes';
 
 const timeout = 10000;
-const changesDelay = 500;
+
 
 const CompletionItemKindMap = Object.fromEntries(
     Object.entries(CompletionItemKind).map(([key, value]) => [value, key]),
@@ -402,8 +402,6 @@ export class LanguageServerPlugin implements PluginValue {
     private documentVersion: number;
     private allowHTMLContent: boolean;
     private synchronizationMethod: SynchronizationMethod;
-    private changesTimeout: ReturnType<typeof setTimeout> | null = null;
-    private pendingChanges: LSP.TextDocumentContentChangeEvent[] | null = null;
 
     constructor(
         private view: EditorView,
@@ -441,46 +439,22 @@ export class LanguageServerPlugin implements PluginValue {
             return;
         }
 
-        if (this.changesTimeout) {
-            clearTimeout(this.changesTimeout);
-        }
-
         switch (this.synchronizationMethod) {
             case SynchronizationMethod.Full:
-                this.pendingChanges = [
+                this.sendChanges([
                     {
                         text: this.view.state.doc.toString(),
                     },
-                ];
+                ]);
                 break;
 
             case SynchronizationMethod.Incremental:
-                if (!this.pendingChanges) {
-                    this.pendingChanges = [];
-                }
-                this.pendingChanges.push(
-                    ...changeSetToEvents(startState.doc, changes),
-                );
+                this.sendChanges(changeSetToEvents(startState.doc, changes));
                 break;
         }
-
-        this.changesTimeout = setTimeout(() => {
-            this.changesTimeout = null;
-            if (this.pendingChanges) {
-                this.sendChanges(this.pendingChanges);
-                this.pendingChanges = null;
-            }
-        }, changesDelay);
     }
 
     public destroy() {
-        if (this.changesTimeout) {
-            clearTimeout(this.changesTimeout);
-            if (this.pendingChanges) {
-                this.sendChanges(this.pendingChanges);
-                this.pendingChanges = null;
-            }
-        }
         this.client.detachPlugin(this);
     }
 
@@ -529,6 +503,7 @@ export class LanguageServerPlugin implements PluginValue {
             return null;
         }
 
+
         const result = await this.client.textDocumentHover({
             textDocument: { uri: this.documentUri },
             position: { line, character },
@@ -573,6 +548,7 @@ export class LanguageServerPlugin implements PluginValue {
             triggerCharacter: string | undefined;
         },
     ): Promise<CompletionResult | null> {
+
         if (
             !this.client.ready ||
             !this.client.capabilities!.completionProvider
