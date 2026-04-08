@@ -4,7 +4,7 @@
 
 This plugin connects a [CodeMirror 6](https://codemirror.net/) editor with a [Language Server](https://microsoft.github.io/language-server-protocol/) over WebSocket, providing IDE-like features in the browser.
 
-[How It Works](https://hjr265.me/blog/codemirror-lsp/)
+[How It Works](https://hjr265.me/blog/codemirror-lsp/) | [Live Demo](https://furqansoftware.github.io/codemirror-languageserver/)
 
 ## Features
 

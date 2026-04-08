@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>codemirror-languageserver</title>
+        <style>
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+            }
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                    Oxygen, Ubuntu, sans-serif;
+                margin: 0;
+                padding: 0;
+                background: #fff;
+                color: #24292f;
+                line-height: 1.6;
+            }
+
+            /* Header */
+            .hero {
+                background: linear-gradient(135deg, #0099e5 0%, #006daa 100%);
+                color: #fff;
+                padding: 48px 24px;
+                text-align: center;
+            }
+            .hero h1 {
+                font-size: 2em;
+                margin: 0 0 8px;
+                font-weight: 700;
+            }
+            .hero p {
+                margin: 0 0 20px;
+                font-size: 1.1em;
+                opacity: 0.9;
+            }
+            .hero-links {
+                display: flex;
+                gap: 12px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .hero-links a {
+                display: inline-block;
+                padding: 8px 20px;
+                border-radius: 6px;
+                font-size: 0.9em;
+                font-weight: 600;
+                text-decoration: none;
+                transition: opacity 0.15s;
+            }
+            .hero-links a:hover {
+                opacity: 0.85;
+            }
+            .btn-primary {
+                background: #fff;
+                color: #0099e5;
+            }
+            .btn-secondary {
+                background: rgba(255, 255, 255, 0.15);
+                color: #fff;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+            }
+
+            /* Main content */
+            .container {
+                max-width: 960px;
+                margin: 0 auto;
+                padding: 32px 24px;
+            }
+
+            /* Features grid */
+            .features-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 16px;
+                margin: 0 0 40px;
+            }
+            .feature-card {
+                padding: 16px;
+                border-radius: 8px;
+                background: #f6f8fa;
+                text-align: center;
+            }
+            .feature-card .emoji {
+                display: block;
+                font-size: 1.6em;
+                text-align: center;
+                margin-bottom: 8px;
+            }
+            .feature-card strong {
+                display: block;
+                margin-bottom: 4px;
+            }
+            .feature-card p {
+                margin: 0;
+                font-size: 0.85em;
+                color: #57606a;
+            }
+
+            /* Demo section */
+            h2 {
+                font-size: 1.4em;
+                margin: 0 0 8px;
+                color: #24292f;
+            }
+            .demo-hint {
+                margin: 0 0 12px;
+                font-size: 0.9em;
+                color: #57606a;
+            }
+            #editor {
+                border: 1px solid #d0d7de;
+                border-radius: 8px;
+                overflow: hidden;
+                background: #fff;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            }
+            .cm-editor {
+                height: 420px;
+            }
+            .cm-editor .cm-scroller {
+                overflow: auto;
+            }
+            .try-bar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin: 12px 0 0;
+                font-size: 0.8em;
+            }
+            .try-bar span {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 4px 10px;
+                background: #f6f8fa;
+                border: 1px solid #d0d7de;
+                border-radius: 20px;
+                color: #57606a;
+            }
+            kbd {
+                display: inline-block;
+                padding: 1px 5px;
+                font-size: 0.85em;
+                font-family: inherit;
+                background: #fff;
+                border: 1px solid #d0d7de;
+                border-radius: 3px;
+                box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+            }
+
+            /* Quick start */
+            .quick-start {
+                margin: 48px 0 0;
+            }
+            .quick-start h2 {
+                margin: 0 0 16px;
+            }
+            .step {
+                margin: 0 0 24px;
+            }
+            .step h3 {
+                font-size: 1em;
+                margin: 0 0 8px;
+                color: #24292f;
+            }
+            .step p {
+                margin: 0 0 8px;
+                font-size: 0.9em;
+                color: #57606a;
+            }
+            pre {
+                margin: 0;
+                padding: 16px;
+                background: #f6f8fa;
+                border: 1px solid #d0d7de;
+                border-radius: 8px;
+                overflow-x: auto;
+                font-size: 0.85em;
+                line-height: 1.5;
+            }
+            code {
+                font-family: 'SFMono-Regular', Consolas, 'Liberation Mono',
+                    Menlo, monospace;
+                font-size: 0.9em;
+            }
+            pre code {
+                font-size: inherit;
+            }
+            p code {
+                padding: 2px 6px;
+                background: #f6f8fa;
+                border-radius: 4px;
+            }
+
+            /* LSP Document Highlight */
+            .cm-lsp-highlight-text,
+            .cm-lsp-highlight-read {
+                background-color: rgba(103, 126, 234, 0.15);
+                border-radius: 2px;
+            }
+            .cm-lsp-highlight-write {
+                background-color: rgba(118, 75, 162, 0.2);
+                border-radius: 2px;
+            }
+            /* LSP Rename Panel */
+            .cm-lsp-rename-panel {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px 10px;
+                background: #f6f8fa;
+                border-bottom: 1px solid #d0d7de;
+                font-size: 0.85em;
+            }
+            .cm-lsp-rename-panel::before {
+                content: 'Rename:';
+                color: #57606a;
+            }
+            .cm-lsp-rename-input {
+                font-family: inherit;
+                font-size: inherit;
+                padding: 2px 6px;
+                border: 1px solid #d0d7de;
+                border-radius: 4px;
+                outline: none;
+            }
+            .cm-lsp-rename-input:focus {
+                border-color: #0099e5;
+                box-shadow: 0 0 0 2px rgba(103, 126, 234, 0.25);
+            }
+
+            /* Footer */
+            footer {
+                margin-top: 48px;
+                padding: 24px;
+                text-align: center;
+                font-size: 0.85em;
+                color: #8b949e;
+                border-top: 1px solid #d0d7de;
+            }
+            footer a {
+                color: #0099e5;
+                text-decoration: none;
+            }
+            footer a:hover {
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="hero">
+            <h1>codemirror-languageserver</h1>
+            <p>
+                Language Server Protocol support for CodeMirror 6 &mdash;
+                completions, hover, diagnostics, and more.
+            </p>
+            <div class="hero-links">
+                <a
+                    class="btn-primary"
+                    href="https://www.npmjs.com/package/codemirror-languageserver"
+                    >npm install</a
+                >
+                <a
+                    class="btn-secondary"
+                    href="https://github.com/FurqanSoftware/codemirror-languageserver"
+                    >GitHub</a
+                >
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="emoji">⌨️</span>
+                    <strong>Code Completion</strong>
+                    <p>
+                        Autocomplete with resolve support, triggered by typing
+                        or trigger characters.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <span class="emoji">📚</span>
+                    <strong>Hover Documentation</strong>
+                    <p>
+                        Rich hover tooltips with Markdown rendering for any
+                        symbol.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <span class="emoji">🩺</span>
+                    <strong>Diagnostics</strong>
+                    <p>
+                        Real-time errors and warnings from the language server,
+                        shown inline.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <span class="emoji">🔍</span>
+                    <strong>Go to Definition</strong>
+                    <p>
+                        Jump to definition, declaration, or type definition
+                        with F12.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <span class="emoji">🔦</span>
+                    <strong>Document Highlight</strong>
+                    <p>
+                        All occurrences of a symbol are highlighted when the
+                        cursor is on it.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <span class="emoji">🎨</span>
+                    <strong>Formatting</strong>
+                    <p>
+                        Format the entire document or a selection via the
+                        language server.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <span class="emoji">✏️</span>
+                    <strong>Rename Symbol</strong>
+                    <p>
+                        Rename a symbol across the document with an inline
+                        prompt.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <span class="emoji">🔌</span>
+                    <strong>Custom Transport</strong>
+                    <p>
+                        WebSocket out of the box, or bring your own transport
+                        (Web Workers, MessagePort, etc.).
+                    </p>
+                </div>
+            </div>
+
+            <h2>Live Demo</h2>
+            <p class="demo-hint">
+                This editor is connected to a minimal JavaScript LSP server
+                running entirely in a Web Worker &mdash; no backend needed.
+            </p>
+            <div id="editor"></div>
+            <div class="try-bar">
+                <span>Type <code>console.</code> for completions</span>
+                <span
+                    >Hover over <code>Math</code>, <code>document</code>,
+                    <code>JSON</code></span
+                >
+                <span>Click a word to see highlights</span>
+                <span
+                    ><kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> to
+                    format</span
+                >
+                <span><kbd>F2</kbd> to rename</span>
+            </div>
+
+            <div class="quick-start">
+                <h2>Quick Start</h2>
+
+                <div class="step">
+                    <h3>1. Install</h3>
+                    <pre><code>npm i codemirror-languageserver</code></pre>
+                </div>
+
+                <div class="step">
+                    <h3>2. Connect to a language server over WebSocket</h3>
+                    <pre><code>import { EditorState } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
+import { languageServer } from 'codemirror-languageserver';
+
+const ls = languageServer({
+    serverUri: 'ws://localhost:8080',
+    rootUri: 'file:///',
+    documentUri: 'file:///main.cpp',
+    languageId: 'cpp',
+});
+
+const view = new EditorView({
+    state: EditorState.create({
+        extensions: [/* other extensions, */ ls],
+    }),
+});</code></pre>
+                </div>
+
+                <div class="step">
+                    <h3>3. Or use a custom transport (like this demo does)</h3>
+                    <pre><code>import { languageServerWithTransport } from 'codemirror-languageserver';
+
+const worker = new Worker('./lsp-worker.js', { type: 'module' });
+
+// WorkerTransport implements the Transport interface:
+//   send(), onMessage(), onClose(), onError(), close()
+const transport = new WorkerTransport(worker);
+
+const ls = languageServerWithTransport({
+    transport,
+    rootUri: 'file:///',
+    documentUri: 'file:///demo.js',
+    languageId: 'javascript',
+});</code></pre>
+                </div>
+
+                <div class="step">
+                    <h3>4. Add keybindings for formatting and rename</h3>
+                    <pre><code>import { keymap } from '@codemirror/view';
+import {
+    formatDocument,
+    formatSelection,
+    renameSymbol,
+} from 'codemirror-languageserver';
+
+keymap.of([
+    { key: 'Shift-Alt-f', run: formatDocument },
+    { key: 'Ctrl-k Ctrl-f', run: formatSelection },
+    { key: 'F2', run: renameSymbol },
+])</code></pre>
+                </div>
+
+                <div class="step">
+                    <h3>5. React to server capabilities</h3>
+                    <pre><code>languageServer({
+    serverUri: 'ws://localhost:8080',
+    rootUri: 'file:///',
+    documentUri: 'file:///main.cpp',
+    languageId: 'cpp',
+    onCapabilities(capabilities) {
+        // Update your UI based on what the server supports
+        // e.g. capabilities.documentFormattingProvider
+    },
+    onError(error) {
+        console.error('LSP error:', error);
+    },
+    onClose() {
+        console.log('LSP connection closed');
+    },
+})</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <a
+                href="https://github.com/FurqanSoftware/codemirror-languageserver"
+                >codemirror-languageserver</a
+            >
+            &mdash; BSD-3-Clause &mdash; Built by
+            <a href="https://furqansoftware.com">Furqan Software</a>
+        </footer>
+        <script type="module" src="./dist/gh-pages.js"></script>
+    </body>
+</html>
