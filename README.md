@@ -167,7 +167,7 @@ import { formatDocument, formatSelection } from 'codemirror-languageserver';
 
 const formattingKeymap = keymap.of([
     { key: 'Shift-Alt-f', run: formatDocument },
-    { key: 'Ctrl-k Ctrl-f', run: formatSelection },
+    { key: 'Shift-Alt-g', run: formatSelection },
 ]);
 ```
 
