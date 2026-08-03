@@ -1,6 +1,6 @@
 import type { Text, ChangeSet } from '@codemirror/state';
 import type * as LSP from 'vscode-languageserver-protocol';
-import { offsetToPos, posToOffset } from './pos';
+import { offsetToPos, posToOffset } from './pos.js';
 
 export function changeSetToEvents(
     doc: Text,

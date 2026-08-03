@@ -2,8 +2,8 @@ import { StateEffect, StateField } from '@codemirror/state';
 import { EditorView, showPanel, Panel } from '@codemirror/view';
 import type * as LSP from 'vscode-languageserver-protocol';
 
-import { languageServerPlugin } from './plugin';
-import { offsetToPos, posToOffset } from './pos';
+import { languageServerPlugin } from './plugin.js';
+import { offsetToPos, posToOffset } from './pos.js';
 
 const openRenamePanel = StateEffect.define<string>();
 const closeRenamePanel = StateEffect.define<null>();

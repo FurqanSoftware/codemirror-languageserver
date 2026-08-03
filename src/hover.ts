@@ -1,7 +1,7 @@
 import type { Tooltip } from '@codemirror/view';
 import { hoverTooltip as cmHoverTooltip } from '@codemirror/view';
-import { languageServerPlugin } from './plugin';
-import { offsetToPos } from './pos';
+import { languageServerPlugin } from './plugin.js';
+import { offsetToPos } from './pos.js';
 import { Extension } from '@codemirror/state';
 
 export const hoverTooltip = (): Extension =>
