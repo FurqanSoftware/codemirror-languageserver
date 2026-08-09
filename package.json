@@ -6,6 +6,7 @@
     "type": "module",
     "scripts": {
         "prepare": "rollup -c rollup.config.js",
+        "typecheck": "tsc --noEmit -p tsconfig.check.json",
         "build:gh-pages": "rollup -c rollup.config.gh-pages.js"
     },
     "author": {
