@@ -1,6 +1,6 @@
 import { EditorView, Command, KeyBinding } from '@codemirror/view';
-import { languageServerPlugin } from './plugin';
-import { offsetToPos } from './pos';
+import { languageServerPlugin } from './plugin.js';
+import { offsetToPos } from './pos.js';
 
 function requestDefinition(view: EditorView, pos: number): boolean {
     const plugin = view.plugin(languageServerPlugin);

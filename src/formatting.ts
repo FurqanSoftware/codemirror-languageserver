@@ -2,8 +2,8 @@ import { Facet } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import type * as LSP from 'vscode-languageserver-protocol';
 
-import { languageServerPlugin } from './plugin';
-import { offsetToPos, posToOffset } from './pos';
+import { languageServerPlugin } from './plugin.js';
+import { offsetToPos, posToOffset } from './pos.js';
 
 /**
  * Facet for configuring LSP formatting options (tab size, spaces vs tabs, etc.).

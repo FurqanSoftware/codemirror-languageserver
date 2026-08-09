@@ -8,8 +8,8 @@ import {
 } from '@codemirror/view';
 import { DocumentHighlightKind } from 'vscode-languageserver-protocol';
 
-import { languageServerPlugin } from './plugin';
-import { offsetToPos, posToOffset } from './pos';
+import { languageServerPlugin } from './plugin.js';
+import { offsetToPos, posToOffset } from './pos.js';
 
 const highlightField = StateField.define<DecorationSet>({
     create() {

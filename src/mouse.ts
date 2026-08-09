@@ -1,6 +1,6 @@
 import { EditorView } from '@codemirror/view';
 import { Extension } from '@codemirror/state';
-import { jumpToDefinitionPos, jumpToTypeDefinitionPos } from './definition';
+import { jumpToDefinitionPos, jumpToTypeDefinitionPos } from './definition.js';
 
 export const mouseHandler = (): Extension =>
     EditorView.domEventHandlers({

@@ -1,8 +1,8 @@
 import { Extension } from '@codemirror/state';
 import { autocompletion as cmAutocompletion } from '@codemirror/autocomplete';
 import { CompletionTriggerKind } from 'vscode-languageserver-protocol';
-import { languageServerPlugin } from './plugin';
-import { offsetToPos } from './pos';
+import { languageServerPlugin } from './plugin.js';
+import { offsetToPos } from './pos.js';
 
 export const autocompletion = (): Extension =>
     cmAutocompletion({

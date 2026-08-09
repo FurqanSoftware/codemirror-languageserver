@@ -2,8 +2,8 @@ import { insertCompletionText } from '@codemirror/autocomplete';
 import { setDiagnostics } from '@codemirror/lint';
 import { Facet } from '@codemirror/state';
 import { EditorView, Tooltip, ViewPlugin } from '@codemirror/view';
-import { JSONRPCClient, WebSocketTransport } from './jsonrpc';
-import type { Transport } from './jsonrpc';
+import { JSONRPCClient, WebSocketTransport } from './jsonrpc.js';
+import type { Transport } from './jsonrpc.js';
 import {
     CompletionItemKind,
     CompletionTriggerKind,
@@ -21,8 +21,8 @@ import { marked } from 'marked';
 import type { PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 import type * as LSP from 'vscode-languageserver-protocol';
 
-import { posToOffset, offsetToPos } from './pos';
-import { changeSetToEvents } from './changes';
+import { posToOffset, offsetToPos } from './pos.js';
+import { changeSetToEvents } from './changes.js';
 
 const timeout = 10000;
 

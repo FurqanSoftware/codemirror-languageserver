@@ -2,20 +2,20 @@ export {
     LanguageServerClient,
     languageServerPlugin,
     SynchronizationMethod,
-} from './plugin';
-export { WebSocketTransport } from './jsonrpc';
-export type { Transport } from './jsonrpc';
+} from './plugin.js';
+export { WebSocketTransport } from './jsonrpc.js';
+export type { Transport } from './jsonrpc.js';
 export {
     jumpToDefinition,
     jumpToDefinitionPos,
     jumpToDefinitionKeymap,
-} from './definition';
+} from './definition.js';
 export {
     formatDocument,
     formatSelection,
     formattingOptions,
-} from './formatting';
-export { renameSymbol } from './rename';
+} from './formatting.js';
+export { renameSymbol } from './rename.js';
 export {
     PyrightInitializationOptions,
     RustAnalyzerInitializationOptions,
@@ -23,26 +23,26 @@ export {
     ESLintInitializationOptions,
     ClangdInitializationOptions,
     GoplsInitializationOptions,
-} from './initialization';
+} from './initialization.js';
 
 import { keymap } from '@codemirror/view';
-import { WebSocketTransport } from './jsonrpc';
+import { WebSocketTransport } from './jsonrpc.js';
 
 import {
     LanguageServerClient,
     languageServerPlugin,
     SynchronizationMethod,
-} from './plugin';
+} from './plugin.js';
 import type {
     LanguageServerClientOptions,
     LanguageServerBaseOptions,
-} from './plugin';
-import { jumpToDefinitionKeymap } from './definition';
-import { hoverTooltip } from './hover';
-import { autocompletion } from './completion';
-import { documentHighlight } from './highlight';
-import { mouseHandler } from './mouse';
-import { renameExtension } from './rename';
+} from './plugin.js';
+import { jumpToDefinitionKeymap } from './definition.js';
+import { hoverTooltip } from './hover.js';
+import { autocompletion } from './completion.js';
+import { documentHighlight } from './highlight.js';
+import { mouseHandler } from './mouse.js';
+import { renameExtension } from './rename.js';
 
 interface LanguageServerOptions<InitializationOptions = unknown>
     extends LanguageServerClientOptions<InitializationOptions> {
