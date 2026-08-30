@@ -85,22 +85,25 @@ const highlightPlugin = ViewPlugin.fromClass(
                 !plugin.client.ready ||
                 !plugin.client.capabilities?.documentHighlightProvider
             ) {
-                view.dispatch({ effects: setHighlightsEffect.of(Decoration.none) });
+                view.dispatch({
+                    effects: setHighlightsEffect.of(Decoration.none),
+                });
                 return;
             }
 
-            const result =
-                await plugin.client.textDocumentDocumentHighlight({
-                    textDocument: { uri: plugin.documentUri },
-                    position: offsetToPos(state.doc, pos),
-                });
+            const result = await plugin.client.textDocumentDocumentHighlight({
+                textDocument: { uri: plugin.documentUri },
+                position: offsetToPos(state.doc, pos),
+            });
 
             if (view.state.selection.main.head !== pos) {
                 return;
             }
 
             if (!result || result.length === 0) {
-                view.dispatch({ effects: setHighlightsEffect.of(Decoration.none) });
+                view.dispatch({
+                    effects: setHighlightsEffect.of(Decoration.none),
+                });
                 return;
             }
 
@@ -110,10 +113,7 @@ const highlightPlugin = ViewPlugin.fromClass(
                         view.state.doc,
                         highlight.range.start,
                     );
-                    const to = posToOffset(
-                        view.state.doc,
-                        highlight.range.end,
-                    );
+                    const to = posToOffset(view.state.doc, highlight.range.end);
                     if (from == null || to == null) return null;
                     return decorationForKind(highlight.kind).range(from, to);
                 })

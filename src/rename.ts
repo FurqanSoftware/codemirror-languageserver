@@ -137,10 +137,7 @@ export function renameSymbol(view: EditorView): boolean {
     const plugin = view.plugin(languageServerPlugin);
     if (!plugin) return false;
 
-    if (
-        !plugin.client.ready ||
-        !plugin.client.capabilities?.renameProvider
-    ) {
+    if (!plugin.client.ready || !plugin.client.capabilities?.renameProvider) {
         return false;
     }
 

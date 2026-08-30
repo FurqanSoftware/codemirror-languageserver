@@ -26,7 +26,6 @@ import { changeSetToEvents } from './changes.js';
 
 const timeout = 10000;
 
-
 const CompletionItemKindMap = Object.fromEntries(
     Object.entries(CompletionItemKind).map(([key, value]) => [value, key]),
 ) as Record<CompletionItemKind, string>;
@@ -314,11 +313,7 @@ export class LanguageServerClient<InitializationOptions = unknown> {
     }
 
     public async textDocumentFormatting(params: LSP.DocumentFormattingParams) {
-        return await this.request(
-            'textDocument/formatting',
-            params,
-            timeout,
-        );
+        return await this.request('textDocument/formatting', params, timeout);
     }
 
     public async textDocumentRangeFormatting(
@@ -503,7 +498,6 @@ export class LanguageServerPlugin implements PluginValue {
             return null;
         }
 
-
         const result = await this.client.textDocumentHover({
             textDocument: { uri: this.documentUri },
             position: { line, character },
@@ -548,7 +542,6 @@ export class LanguageServerPlugin implements PluginValue {
             triggerCharacter: string | undefined;
         },
     ): Promise<CompletionResult | null> {
-
         if (
             !this.client.ready ||
             !this.client.capabilities!.completionProvider
@@ -626,10 +619,7 @@ export class LanguageServerPlugin implements PluginValue {
                                 textEdit.range.start,
                             ),
                             to: Math.max(
-                                posToOffset(
-                                    view.state.doc,
-                                    textEdit.range.end,
-                                ),
+                                posToOffset(view.state.doc, textEdit.range.end),
                                 to,
                             ),
                             insert: textEdit.newText,
@@ -798,8 +788,7 @@ export class LanguageServerPlugin implements PluginValue {
                         [DiagnosticSeverity.Hint]: 'info',
                     } as const
                 )[severity!],
-                message:
-                    typeof message === 'string' ? message : message.value,
+                message: typeof message === 'string' ? message : message.value,
             }))
             .filter(
                 ({ from, to }) =>
@@ -837,8 +826,9 @@ export interface LanguageServerBaseOptions {
 }
 
 /** Options for creating a {@link LanguageServerClient}. */
-export interface LanguageServerClientOptions<InitializationOptions = unknown>
-    extends LanguageServerBaseOptions {
+export interface LanguageServerClientOptions<
+    InitializationOptions = unknown,
+> extends LanguageServerBaseOptions {
     /** The transport used to communicate with the language server. */
     transport: Transport;
     /** Close the transport when the last plugin detaches. */

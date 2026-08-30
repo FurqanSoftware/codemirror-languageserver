@@ -16,10 +16,7 @@ export const formattingOptions = Facet.define<
     LSP.FormattingOptions
 >({
     combine(values) {
-        return Object.assign(
-            { tabSize: 4, insertSpaces: true },
-            ...values,
-        );
+        return Object.assign({ tabSize: 4, insertSpaces: true }, ...values);
     },
 });
 

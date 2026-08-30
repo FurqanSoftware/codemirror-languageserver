@@ -44,15 +44,17 @@ import { documentHighlight } from './highlight.js';
 import { mouseHandler } from './mouse.js';
 import { renameExtension } from './rename.js';
 
-interface LanguageServerOptions<InitializationOptions = unknown>
-    extends LanguageServerClientOptions<InitializationOptions> {
+interface LanguageServerOptions<
+    InitializationOptions = unknown,
+> extends LanguageServerClientOptions<InitializationOptions> {
     client?: LanguageServerClient<InitializationOptions>;
     allowHTMLContent?: boolean;
     synchronizationMethod?: SynchronizationMethod;
 }
 
-interface LanguageServerWebsocketOptions<InitializationOptions = unknown>
-    extends LanguageServerBaseOptions {
+interface LanguageServerWebsocketOptions<
+    InitializationOptions = unknown,
+> extends LanguageServerBaseOptions {
     serverUri: `ws://${string}` | `wss://${string}`;
     initializationOptions?: InitializationOptions;
 }
