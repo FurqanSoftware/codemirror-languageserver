@@ -26,7 +26,7 @@
     "license": "BSD-3-Clause",
     "devDependencies": {
         "@babel/core": "^7.29.7",
-        "@babel/preset-env": "^7.29.7",
+        "@babel/preset-env": "^8.0.2",
         "@codemirror/commands": "^6.11.0",
         "@codemirror/lang-javascript": "^6.2.5",
         "@codemirror/language": "^6.12.4",
