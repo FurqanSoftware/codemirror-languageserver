@@ -49,7 +49,7 @@ function applyWorkspaceEdit(view: EditorView, edit: LSP.WorkspaceEdit) {
             if ('textDocument' in change) {
                 if (change.textDocument.uri !== plugin.documentUri) continue;
                 for (const e of change.edits) {
-                    if ('range' in e) {
+                    if ('newText' in e) {
                         changes.push({
                             from: posToOffset(view.state.doc, e.range.start),
                             to: posToOffset(view.state.doc, e.range.end),
