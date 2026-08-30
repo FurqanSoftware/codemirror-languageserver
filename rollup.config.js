@@ -19,7 +19,6 @@ export default {
         '@codemirror/autocomplete',
         '@codemirror/lint',
         '@codemirror/state',
-        '@codemirror/tooltip',
         '@codemirror/view',
         'marked',
         'vscode-languageserver-protocol',
