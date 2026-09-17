@@ -1,4 +1,3 @@
-import babel from '@rollup/plugin-babel';
 import typescript from '@rollup/plugin-typescript';
 
 export default {
@@ -10,9 +9,6 @@ export default {
     plugins: [
         typescript({
             declarationDir: 'dist',
-        }),
-        babel({
-            babelHelpers: 'bundled',
         }),
     ],
     external: [
