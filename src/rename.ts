@@ -3,7 +3,7 @@ import { EditorView, showPanel, Panel } from '@codemirror/view';
 import type * as LSP from 'vscode-languageserver-protocol';
 
 import { languageServerPlugin } from './plugin.js';
-import { offsetToPos, posToOffset } from './pos.js';
+import { isEditableRange, offsetToPos, posToOffset } from './pos.js';
 
 const openRenamePanel = StateEffect.define<string>();
 const closeRenamePanel = StateEffect.define<null>();
@@ -35,6 +35,12 @@ function applyWorkspaceEdit(view: EditorView, edit: LSP.WorkspaceEdit) {
         const edits = edit.changes[plugin.documentUri];
         if (edits) {
             for (const e of edits) {
+                if (!isEditableRange(view.state, e.range)) {
+                    console.error(
+                        'Cannot rename outside the editable document',
+                    );
+                    return;
+                }
                 changes.push({
                     from: posToOffset(view.state, e.range.start),
                     to: posToOffset(view.state, e.range.end),
@@ -50,6 +56,12 @@ function applyWorkspaceEdit(view: EditorView, edit: LSP.WorkspaceEdit) {
                 if (change.textDocument.uri !== plugin.documentUri) continue;
                 for (const e of change.edits) {
                     if ('newText' in e) {
+                        if (!isEditableRange(view.state, e.range)) {
+                            console.error(
+                                'Cannot rename outside the editable document',
+                            );
+                            return;
+                        }
                         changes.push({
                             from: posToOffset(view.state, e.range.start),
                             to: posToOffset(view.state, e.range.end),

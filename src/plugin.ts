@@ -21,7 +21,12 @@ import { marked } from 'marked';
 import type { PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 import type * as LSP from 'vscode-languageserver-protocol';
 
-import { posToOffset, offsetToPos, fullDocument } from './pos.js';
+import {
+    posToOffset,
+    offsetToPos,
+    fullDocument,
+    isEditableRange,
+} from './pos.js';
 import { changeSetToEvents } from './changes.js';
 
 const timeout = 10000;
@@ -613,6 +618,19 @@ export class LanguageServerPlugin implements PluginValue {
                     to: number,
                 ) {
                     const changes = [];
+
+                    if (
+                        (isLSPTextEdit(textEdit) &&
+                            !isEditableRange(view.state, textEdit.range)) ||
+                        additionalTextEdits?.some(
+                            (edit) => !isEditableRange(view.state, edit.range),
+                        )
+                    ) {
+                        console.error(
+                            'Cannot apply completion outside the editable document',
+                        );
+                        return;
+                    }
 
                     if (isLSPTextEdit(textEdit)) {
                         changes.push({

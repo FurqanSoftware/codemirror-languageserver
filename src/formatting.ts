@@ -3,7 +3,7 @@ import type { EditorView } from '@codemirror/view';
 import type * as LSP from 'vscode-languageserver-protocol';
 
 import { languageServerPlugin } from './plugin.js';
-import { offsetToPos, posToOffset } from './pos.js';
+import { isEditableRange, offsetToPos, posToOffset } from './pos.js';
 
 /**
  * Facet for configuring LSP formatting options (tab size, spaces vs tabs, etc.).
@@ -29,6 +29,10 @@ function getFormattingOptions(view: EditorView): LSP.FormattingOptions {
 }
 
 function applyTextEdits(view: EditorView, edits: LSP.TextEdit[]) {
+    if (edits.some((edit) => !isEditableRange(view.state, edit.range))) {
+        console.error('Cannot apply formatting outside the editable document');
+        return;
+    }
     const changes = edits.map((edit) => ({
         from: posToOffset(view.state, edit.range.start),
         to: posToOffset(view.state, edit.range.end),

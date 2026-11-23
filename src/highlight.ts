@@ -111,7 +111,7 @@ const highlightPlugin = ViewPlugin.fromClass(
                 .map((highlight) => {
                     const from = posToOffset(view.state, highlight.range.start);
                     const to = posToOffset(view.state, highlight.range.end);
-                    if (from == null || to == null) return null;
+                    if (from == null || to == null || from >= to) return null;
                     return decorationForKind(highlight.kind).range(from, to);
                 })
                 .filter((d) => d != null)

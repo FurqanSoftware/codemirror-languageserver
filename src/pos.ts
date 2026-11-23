@@ -13,6 +13,32 @@ export function fullDocument(state: EditorState): Text {
         .append(Text.of(state.facet(documentSuffix).split('\n')));
 }
 
+export function isEditableRange(
+    state: EditorState,
+    range: {
+        start: { line: number; character: number };
+        end: { line: number; character: number };
+    },
+): boolean {
+    const doc = fullDocument(state);
+    const toAbsoluteOffset = (pos: { line: number; character: number }) => {
+        if (pos.line < 0 || pos.line >= doc.lines || pos.character < 0) return;
+        const line = doc.line(pos.line + 1);
+        if (pos.character > line.length) return;
+        return line.from + pos.character;
+    };
+    const start = toAbsoluteOffset(range.start);
+    const end = toAbsoluteOffset(range.end);
+    const prefixLength = state.facet(documentPrefix).length;
+    return (
+        start !== undefined &&
+        end !== undefined &&
+        start >= prefixLength &&
+        start <= end &&
+        end <= prefixLength + state.doc.length
+    );
+}
+
 export function posToOffset(
     document: Text | EditorState,
     pos: { line: number; character: number },
