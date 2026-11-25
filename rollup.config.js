@@ -1,25 +1,22 @@
-import babel from '@rollup/plugin-babel';
-import ts from 'rollup-plugin-ts';
+import typescript from '@rollup/plugin-typescript';
 
 export default {
-	input: 'src/index.ts',
-	output: {
-		dir: 'dist',
-		format: 'es'
-	},
-	plugins: [
-		ts(),
-		babel({
-			babelHelpers: 'bundled'
-		})
-	],
-	external: [
-		'@codemirror/autocomplete',
-		'@codemirror/lint',
-		'@codemirror/state',
-		'@codemirror/tooltip',
-		'@codemirror/view',
-		'@open-rpc/client-js',
-		'vscode-languageserver-protocol'
-	]
+    input: 'src/index.ts',
+    output: {
+        dir: 'dist',
+        format: 'es',
+    },
+    plugins: [
+        typescript({
+            declarationDir: 'dist',
+        }),
+    ],
+    external: [
+        '@codemirror/autocomplete',
+        '@codemirror/lint',
+        '@codemirror/state',
+        '@codemirror/view',
+        'marked',
+        'vscode-languageserver-protocol',
+    ],
 };

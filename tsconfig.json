@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
-        "moduleResolution": "node",
+        "module": "esnext",
+        "moduleResolution": "bundler",
         "target": "ES2019",
         "rootDir": "src",
         "declaration": true
